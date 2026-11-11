@@ -1,5 +1,6 @@
-import { BrowserProvider, ContractFactory, formatEther, formatUnits, parseUnits } from "ethers";
+import { BrowserProvider, Contract, ContractFactory, formatEther, formatUnits, getAddress, isAddress, parseUnits, ZeroAddress } from "ethers";
 import artifact from "./artifact.json";
+import mintableArtifact from "./artifact-mintable.json";
 
 const BASE = { id: 8453, hex: "0x2105" };
 const BASE_PARAMS = {
@@ -14,7 +15,7 @@ const el = {
   form: $("form"), name: $("name"), symbol: $("symbol"), supply: $("supply"), image: $("image"),
   preview: $("preview"), clear: $("clear-img"), err: $("form-error"), status: $("wallet-status"),
   picker: $("picker"), connect: $("connect"), est: $("estimate"), primary: $("primary"),
-  confirm: $("confirm"), result: $("result"),
+  confirm: $("confirm"), result: $("result"), mintable: $("mintable"), coins: $("coins"), coinList: $("coin-list"), coinNote: $("coin-note"),
 };
 
 const state = { providers: new Map(), selected: null, account: null, chainId: null, logo: "", estimate: null, busy: false, revision: 0 };
@@ -82,8 +83,8 @@ function invalidate() {
 function bind(provider) {
   if (provider.__tokin) return;
   provider.__tokin = true;
-  provider.on?.("accountsChanged", (a) => { state.account = a?.[0] || null; if (!state.account) state.selected = null; invalidate(); renderStatus(); renderPicker(); });
-  provider.on?.("chainChanged", (c) => { state.chainId = Number(c); invalidate(); renderStatus(); });
+  provider.on?.("accountsChanged", (a) => { if (provider !== state.selected) return; state.account = a?.[0] || null; if (!state.account) state.selected = null; invalidate(); renderStatus(); renderPicker(); loadCoins(); });
+  provider.on?.("chainChanged", (c) => { if (provider !== state.selected) return; state.chainId = Number(c); invalidate(); renderStatus(); loadCoins(); });
 }
 
 async function connect(key) {
@@ -99,7 +100,7 @@ async function connect(key) {
     state.selected = provider; state.account = accounts[0];
     state.chainId = Number(await provider.request({ method: "eth_chainId" }));
     bind(provider);
-    invalidate(); renderStatus(); renderPicker();
+    invalidate(); renderStatus(); renderPicker(); loadCoins();
   } catch (e) { setError(errMsg(e)); }
 }
 el.connect.addEventListener("click", () => connect());
@@ -162,9 +163,11 @@ function read() {
   if (!/^\d+$/.test(raw) || BigInt(raw) === 0n) throw new Error("supply must be a whole number above zero");
   const supply = parseUnits(raw, 18);
   if (supply > MAX_UINT) throw new Error("supply is too large");
-  return { name, symbol, supply, logo: state.logo };
+  return { name, symbol, supply, logo: state.logo, mintable: el.mintable.checked };
 }
 for (const i of [el.name, el.symbol, el.supply]) i.addEventListener("input", () => { setError(""); invalidate(); });
+
+el.mintable.addEventListener("change", () => { setError(""); invalidate(); });
 
 function setBusy(b, label) {
   state.busy = b; el.primary.disabled = b; el.confirm.disabled = b;
@@ -172,7 +175,7 @@ function setBusy(b, label) {
 }
 
 function factoryFor(signer, v) {
-  return { factory: new ContractFactory(artifact.abi, artifact.bytecode, signer), args: [v.name, v.symbol, v.supply, v.logo] };
+  return { factory: new ContractFactory((v.mintable ? mintableArtifact : artifact).abi, (v.mintable ? mintableArtifact : artifact).bytecode, signer), args: [v.name, v.symbol, v.supply, v.logo] };
 }
 
 el.form.addEventListener("submit", async (e) => {
@@ -227,7 +230,9 @@ el.confirm.addEventListener("click", async () => {
     el.confirm.textContent = "deploying…";
     await contract.waitForDeployment();
     const address = await contract.getAddress();
+    saveCoin(account, { address, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, logo: v.logo, ts: Date.now() });
     showResult(address, v);
+    if (account === state.account) loadCoins();
   } catch (err) { setError(errMsg(err)); }
   finally { setBusy(false); el.confirm.textContent = "confirm and deploy"; }
 });
@@ -236,6 +241,7 @@ function showResult(address, v) {
   invalidate();
   el.result.replaceChildren();
   add(el.result, "h2", v.symbol + " is live");
+  if (v.mintable) add(el.result, "p", "mintable. you can mint more or renounce ownership below.");
   add(el.result, "code", address);
   const p = add(el.result, "p");
   add(p, "a", "view on basescan", { href: "https://basescan.org/token/" + address, target: "_blank", rel: "noopener noreferrer" });
@@ -257,3 +263,135 @@ function showResult(address, v) {
 }
 
 renderStatus();
+
+/* your coins */
+const TOKEN_ABI = [
+  "function name() view returns (string)", "function symbol() view returns (string)",
+  "function totalSupply() view returns (uint256)", "function balanceOf(address) view returns (uint256)",
+  "function owner() view returns (address)", "function mint(address to, uint256 amount)",
+  "function renounceOwnership()",
+];
+const storeKey = (acct) => "tokin:v1:" + BASE.id + ":" + acct.toLowerCase();
+function validRecord(r) {
+  return r && typeof r === "object" && typeof r.address === "string" && isAddress(r.address)
+    && typeof r.name === "string" && r.name.length <= 128 && typeof r.symbol === "string" && r.symbol.length <= 16
+    && typeof r.supply === "string" && /^\d{1,78}$/.test(r.supply) && typeof r.mintable === "boolean";
+}
+function loadRecords(acct) {
+  try {
+    const arr = JSON.parse(localStorage.getItem(storeKey(acct)) || "[]");
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set();
+    return arr.filter(validRecord).map((r) => ({ ...r, address: getAddress(r.address) }))
+      .filter((r) => !seen.has(r.address) && seen.add(r.address));
+  } catch { return []; }
+}
+function saveCoin(acct, rec) {
+  try {
+    const list = loadRecords(acct).filter((r) => r.address !== getAddress(rec.address));
+    list.unshift({ ...rec, address: getAddress(rec.address) });
+    localStorage.setItem(storeKey(acct), JSON.stringify(list.slice(0, 100)));
+  } catch { /* storage unavailable */ }
+}
+const fmt = (n) => { const s = formatUnits(n, 18); const [i, f = ""] = s.split("."); return i.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (f !== "0" && f ? "." + f.slice(0, 4) : ""); };
+
+let coinGen = 0;
+async function activeCtx(account) {
+  // confirm the wallet still matches the context this view was built for
+  const p = state.selected;
+  if (!p || !account || account !== state.account) throw new Error("wallet changed. reload your coins.");
+  const chain = Number(await p.request({ method: "eth_chainId" }));
+  const accts = await p.request({ method: "eth_accounts" });
+  if (chain !== BASE.id || accts[0]?.toLowerCase() !== account.toLowerCase()) throw new Error("wallet changed or not on base.");
+  return await new BrowserProvider(p).getSigner();
+}
+
+async function loadCoins() {
+  const gen = ++coinGen;
+  el.coinList.replaceChildren();
+  const account = state.account;
+  if (!account) { el.coins.hidden = true; return; }
+  const recs = loadRecords(account);
+  el.coins.hidden = false;
+  if (!recs.length) { el.coinNote.textContent = "nothing yet. coins you deploy from this wallet appear here."; return; }
+  if (state.chainId !== BASE.id) { el.coinNote.textContent = "switch to base to see your coins."; return; }
+  el.coinNote.textContent = "";
+  const provider = new BrowserProvider(state.selected);
+  for (const rec of recs) {
+    const card = add(el.coinList, "article", null, { class: "coin" });
+    renderCoin(card, rec, account, provider, gen);
+  }
+}
+
+async function renderCoin(card, rec, account, provider, gen) {
+  const stale = () => gen !== coinGen || account !== state.account || state.chainId !== BASE.id;
+  const head = add(card, "div", null, { class: "coin-head" });
+  if (typeof rec.logo === "string" && /^data:image\/(png|webp);base64,[A-Za-z0-9+/=]+$/.test(rec.logo) && rec.logo.length <= 12000) {
+    const i = add(head, "img", null, { alt: "", class: "coin-logo" }); i.src = rec.logo;
+  }
+  add(head, "strong", rec.symbol);
+  add(head, "span", rec.name, { class: "muted" });
+  const link = add(card, "a", short(rec.address), { href: "https://basescan.org/token/" + rec.address, target: "_blank", rel: "noopener noreferrer", class: "coin-addr" });
+  const dl = add(card, "dl", null, { class: "coin-stats" });
+  const row = (k, v) => { add(dl, "dt", k); return add(dl, "dd", v); };
+  const sup = row("supply", "…"), bal = row("your balance", "…");
+  const c = new Contract(rec.address, TOKEN_ABI, provider);
+  try {
+    const code = await provider.getCode(rec.address);
+    if (stale()) return;
+    if (code === "0x") { sup.textContent = bal.textContent = "—"; add(card, "p", "no contract found at this address on base.", { class: "muted small" }); return; }
+    const [ts, b] = await Promise.all([c.totalSupply(), c.balanceOf(account)]);
+    if (stale()) return;
+    sup.textContent = fmt(ts); bal.textContent = fmt(b);
+  } catch { if (!stale()) { sup.textContent = bal.textContent = "—"; } }
+  if (!rec.mintable) { add(card, "p", "fixed supply", { class: "muted small" }); return; }
+  let owner;
+  try { owner = await c.owner(); } catch { owner = null; }
+  if (stale()) return;
+  if (owner == null) { add(card, "p", "fixed supply", { class: "muted small" }); return; }
+  if (owner === ZeroAddress) { add(card, "p", "ownership renounced. supply is now fixed.", { class: "muted small" }); return; }
+  if (owner.toLowerCase() !== account.toLowerCase()) { add(card, "p", "owned by " + short(owner), { class: "muted small" }); return; }
+  mintControls(card, rec, account, gen, () => { card.replaceChildren(); return renderCoin(card, rec, account, provider, gen); });
+}
+
+function mintControls(card, rec, account, gen, refresh) {
+  const f = add(card, "form", null, { class: "mint", novalidate: "" });
+  add(f, "span", "you own this coin", { class: "muted small" });
+  const to = add(f, "input", null, { type: "text", placeholder: "recipient", value: account, "aria-label": "recipient", spellcheck: "false" });
+  const amt = add(f, "input", null, { type: "text", inputmode: "decimal", placeholder: "amount", "aria-label": "amount to mint" });
+  const row = add(f, "div", null, { class: "mint-row" });
+  const go = add(row, "button", "mint", { type: "submit", class: "primary small-btn" });
+  const ren = add(row, "button", "renounce ownership", { type: "button", class: "secondary danger" });
+  const msg = add(f, "p", null, { class: "error", role: "alert" });
+  const run = async (label, fn) => {
+    msg.textContent = ""; go.disabled = ren.disabled = true;
+    try {
+      if (gen !== coinGen) throw new Error("wallet changed. reload your coins.");
+      const signer = await activeCtx(account);
+      const tc = new Contract(rec.address, TOKEN_ABI, signer);
+      if ((await tc.owner()).toLowerCase() !== account.toLowerCase()) throw new Error("you are not the owner anymore.");
+      const tx = await fn(tc);
+      msg.textContent = "waiting for confirmation…";
+      await tx.wait();
+      if (gen === coinGen && account === state.account) await refresh();
+    } catch (e) { msg.textContent = errMsg(e); go.disabled = ren.disabled = false; }
+  };
+  f.addEventListener("submit", (e) => {
+    e.preventDefault();
+    let recipient, value;
+    try {
+      recipient = to.value.trim() || account;
+      if (!isAddress(recipient)) throw new Error("enter a valid recipient address");
+      recipient = getAddress(recipient);
+      const raw = amt.value.trim().replace(/,/g, "");
+      if (!/^\d+(\.\d{1,18})?$/.test(raw)) throw new Error("enter a positive amount");
+      value = parseUnits(raw, 18);
+      if (value <= 0n || value > MAX_UINT) throw new Error("amount is out of range");
+    } catch (err) { msg.textContent = err.message; return; }
+    run("mint", (tc) => tc.mint(recipient, value));
+  });
+  ren.addEventListener("click", () => {
+    if (!window.confirm("renounce ownership of " + rec.symbol + "?\n\nthis is irreversible. nobody will ever be able to mint more " + rec.symbol + ".")) return;
+    run("renounce", (tc) => tc.renounceOwnership());
+  });
+}

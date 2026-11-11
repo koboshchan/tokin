@@ -41,3 +41,22 @@ button.secondary:hover{text-decoration:underline}
 .foot{color:var(--mut);font-size:13px;margin-top:40px;text-align:center}
 
 [hidden]{display:none!important}
+
+.toggle{display:flex;align-items:center;gap:10px;margin:0 0 20px;cursor:pointer}
+.toggle input{width:18px;height:18px;accent-color:var(--acc);margin:0}
+.toggle em{font-style:normal;color:var(--mut);font-size:13px;margin-left:6px}
+.coins{margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}
+.coins h2{font-size:24px;font-weight:600;letter-spacing:-.02em;margin:0 0 12px}
+.coin{background:var(--fill);border-radius:14px;padding:16px;margin-bottom:12px;font-size:15px}
+.coin-head{display:flex;align-items:center;gap:8px}
+.coin-logo{width:28px;height:28px;border-radius:7px}
+.coin-addr{color:var(--acc);font-size:13px;display:inline-block;margin:4px 0 10px}
+.coin-stats{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 16px}
+.coin-stats dt{color:var(--mut)}.coin-stats dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.small{font-size:13px;margin:10px 0 0}
+.mint{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.mint input{background:var(--bg)}
+.mint-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+button.small-btn{width:auto;padding:8px 22px}
+button.danger{color:var(--err)}
+.mint .error{margin:0}

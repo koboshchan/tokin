@@ -18,6 +18,7 @@
 <div class="img-row"><div id="preview" class="preview" aria-hidden="true"></div>
 <button type="button" class="link" id="choose-img">choose</button><input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
 <button type="button" id="clear-img" class="link" hidden>remove</button></div></div>
+<label class="toggle"><input type="checkbox" id="mintable"><span>mintable <em>you can mint more later</em></span></label>
 <p id="form-error" class="error" role="alert"></p>
 <section class="wallet"><div id="wallet-status" class="muted">no wallet connected</div>
 <div id="picker" class="picker" role="group" aria-label="choose a wallet" hidden></div>
@@ -27,6 +28,7 @@
 <button type="button" id="confirm" class="primary confirm" hidden>confirm and deploy</button>
 </form>
 <section id="result" class="result" aria-live="polite" hidden></section>
+<section id="coins" class="coins" hidden><h2>your coins</h2><p id="coin-note" class="muted"></p><div id="coin-list"></div></section>
 <p class="foot">18 decimals. the whole supply goes to your wallet.</p>
 </main>
 <script type="module" src="./app.js"></script>
