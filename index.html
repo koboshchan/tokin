@@ -18,7 +18,13 @@
 <div class="img-row"><div id="preview" class="preview" aria-hidden="true"></div>
 <button type="button" class="link" id="choose-img">choose</button><input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
 <button type="button" id="clear-img" class="link" hidden>remove</button></div></div>
-<label class="toggle"><input type="checkbox" id="mintable"><span>mintable <em>you can mint more later</em></span></label>
+<fieldset class="options"><legend>options</legend>
+<label class="toggle"><input type="checkbox" id="mintable"><span>mintable <em>mint more later</em></span></label>
+<label class="toggle"><input type="checkbox" id="capped"><span>capped <em>max supply, needs mintable</em></span></label>
+<label class="field" id="cap-field" hidden><span>cap</span><input id="cap" inputmode="numeric" placeholder="10000000"></label>
+<label class="toggle"><input type="checkbox" id="burnable"><span>burnable <em>holders can destroy coins</em></span></label>
+<label class="toggle"><input type="checkbox" id="pausable"><span>pausable <em>owner can freeze transfers</em></span></label>
+</fieldset>
 <p id="form-error" class="error" role="alert"></p>
 <section class="wallet"><div id="wallet-status" class="muted">no wallet connected</div>
 <div id="picker" class="picker" role="group" aria-label="choose a wallet" hidden></div>

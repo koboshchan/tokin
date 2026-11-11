@@ -1,5 +1,5 @@
 import { BrowserProvider, Contract, ContractFactory, formatEther, formatUnits, getAddress, isAddress, parseUnits, ZeroAddress } from "ethers";
-import artifact from "./artifact.json";
+import optionsArtifact from "./artifact-options.json";
 import mintableArtifact from "./artifact-mintable.json";
 
 const BASE = { id: 8453, hex: "0x2105" };
@@ -15,7 +15,7 @@ const el = {
   form: $("form"), name: $("name"), symbol: $("symbol"), supply: $("supply"), image: $("image"),
   preview: $("preview"), clear: $("clear-img"), err: $("form-error"), status: $("wallet-status"),
   picker: $("picker"), connect: $("connect"), est: $("estimate"), primary: $("primary"),
-  confirm: $("confirm"), result: $("result"), mintable: $("mintable"), coins: $("coins"), coinList: $("coin-list"), coinNote: $("coin-note"),
+  confirm: $("confirm"), result: $("result"), mintable: $("mintable"), burnable: $("burnable"), pausable: $("pausable"), capped: $("capped"), capField: $("cap-field"), cap: $("cap"), coins: $("coins"), coinList: $("coin-list"), coinNote: $("coin-note"),
 };
 
 const state = { providers: new Map(), selected: null, account: null, chainId: null, logo: "", estimate: null, busy: false, revision: 0 };
@@ -163,11 +163,28 @@ function read() {
   if (!/^\d+$/.test(raw) || BigInt(raw) === 0n) throw new Error("supply must be a whole number above zero");
   const supply = parseUnits(raw, 18);
   if (supply > MAX_UINT) throw new Error("supply is too large");
-  return { name, symbol, supply, logo: state.logo, mintable: el.mintable.checked };
+  const mintable = el.mintable.checked, burnable = el.burnable.checked, pausable = el.pausable.checked;
+  let cap = 0n;
+  if (mintable && el.capped.checked) {
+    const c = el.cap.value.trim().replace(/,/g, "");
+    if (!/^\d+$/.test(c) || BigInt(c) === 0n) throw new Error("cap must be a whole number above zero");
+    cap = parseUnits(c, 18);
+    if (cap > MAX_UINT) throw new Error("cap is too large");
+    if (cap < supply) throw new Error("cap must be at least the initial supply");
+  }
+  return { name, symbol, supply, logo: state.logo, mintable, burnable, pausable, cap };
 }
 for (const i of [el.name, el.symbol, el.supply]) i.addEventListener("input", () => { setError(""); invalidate(); });
 
-el.mintable.addEventListener("change", () => { setError(""); invalidate(); });
+function syncCap() {
+  const on = el.mintable.checked;
+  el.capped.disabled = !on;
+  if (!on) el.capped.checked = false;
+  el.capField.hidden = !(on && el.capped.checked);
+}
+for (const t of [el.mintable, el.burnable, el.pausable, el.capped]) t.addEventListener("change", () => { syncCap(); setError(""); invalidate(); });
+el.cap.addEventListener("input", () => { setError(""); invalidate(); });
+syncCap();
 
 function setBusy(b, label) {
   state.busy = b; el.primary.disabled = b; el.confirm.disabled = b;
@@ -175,7 +192,7 @@ function setBusy(b, label) {
 }
 
 function factoryFor(signer, v) {
-  return { factory: new ContractFactory((v.mintable ? mintableArtifact : artifact).abi, (v.mintable ? mintableArtifact : artifact).bytecode, signer), args: [v.name, v.symbol, v.supply, v.logo] };
+  return { factory: new ContractFactory(optionsArtifact.abi, optionsArtifact.bytecode, signer), args: [v.name, v.symbol, v.supply, v.logo, v.mintable, v.burnable, v.pausable, v.cap] };
 }
 
 el.form.addEventListener("submit", async (e) => {
@@ -230,7 +247,7 @@ el.confirm.addEventListener("click", async () => {
     el.confirm.textContent = "deploying…";
     await contract.waitForDeployment();
     const address = await contract.getAddress();
-    saveCoin(account, { address, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, logo: v.logo, ts: Date.now() });
+    saveCoin(account, { address, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, burnable: v.burnable, pausable: v.pausable, cap: v.cap.toString(), logo: v.logo, ts: Date.now() });
     showResult(address, v);
     if (account === state.account) loadCoins();
   } catch (err) { setError(errMsg(err)); }
@@ -241,7 +258,7 @@ function showResult(address, v) {
   invalidate();
   el.result.replaceChildren();
   add(el.result, "h2", v.symbol + " is live");
-  if (v.mintable) add(el.result, "p", "mintable. you can mint more or renounce ownership below.");
+  if (v.mintable || v.pausable || v.burnable) add(el.result, "p", "controls for this coin are in your coins below.");
   add(el.result, "code", address);
   const p = add(el.result, "p");
   add(p, "a", "view on basescan", { href: "https://basescan.org/token/" + address, target: "_blank", rel: "noopener noreferrer" });
@@ -269,13 +286,16 @@ const TOKEN_ABI = [
   "function name() view returns (string)", "function symbol() view returns (string)",
   "function totalSupply() view returns (uint256)", "function balanceOf(address) view returns (uint256)",
   "function owner() view returns (address)", "function mint(address to, uint256 amount)",
-  "function renounceOwnership()",
+  "function renounceOwnership()", "function burn(uint256 amount)", "function pause()", "function unpause()", "function paused() view returns (bool)",
+  "function mintable() view returns (bool)", "function burnable() view returns (bool)", "function pausable() view returns (bool)", "function supplyCap() view returns (uint256)",
 ];
 const storeKey = (acct) => "tokin:v1:" + BASE.id + ":" + acct.toLowerCase();
 function validRecord(r) {
   return r && typeof r === "object" && typeof r.address === "string" && isAddress(r.address)
     && typeof r.name === "string" && r.name.length <= 128 && typeof r.symbol === "string" && r.symbol.length <= 16
-    && typeof r.supply === "string" && /^\d{1,78}$/.test(r.supply) && typeof r.mintable === "boolean";
+    && typeof r.supply === "string" && /^\d{1,78}$/.test(r.supply) && typeof r.mintable === "boolean"
+    && (r.burnable === undefined || typeof r.burnable === "boolean") && (r.pausable === undefined || typeof r.pausable === "boolean")
+    && (r.cap === undefined || (typeof r.cap === "string" && /^\d{1,78}$/.test(r.cap)));
 }
 function loadRecords(acct) {
   try {
@@ -323,6 +343,8 @@ async function loadCoins() {
   }
 }
 
+const tryCall = async (fn) => { try { return await fn(); } catch { return null; } };
+
 async function renderCoin(card, rec, account, provider, gen) {
   const stale = () => gen !== coinGen || account !== state.account || state.chainId !== BASE.id;
   const head = add(card, "div", null, { class: "coin-head" });
@@ -331,67 +353,126 @@ async function renderCoin(card, rec, account, provider, gen) {
   }
   add(head, "strong", rec.symbol);
   add(head, "span", rec.name, { class: "muted" });
-  const link = add(card, "a", short(rec.address), { href: "https://basescan.org/token/" + rec.address, target: "_blank", rel: "noopener noreferrer", class: "coin-addr" });
+  add(card, "a", short(rec.address), { href: "https://basescan.org/token/" + rec.address, target: "_blank", rel: "noopener noreferrer", class: "coin-addr" });
+  const badges = add(card, "div", null, { class: "badges" });
   const dl = add(card, "dl", null, { class: "coin-stats" });
   const row = (k, v) => { add(dl, "dt", k); return add(dl, "dd", v); };
   const sup = row("supply", "…"), bal = row("your balance", "…");
   const c = new Contract(rec.address, TOKEN_ABI, provider);
+  let balance = 0n;
   try {
     const code = await provider.getCode(rec.address);
     if (stale()) return;
     if (code === "0x") { sup.textContent = bal.textContent = "—"; add(card, "p", "no contract found at this address on base.", { class: "muted small" }); return; }
     const [ts, b] = await Promise.all([c.totalSupply(), c.balanceOf(account)]);
     if (stale()) return;
-    sup.textContent = fmt(ts); bal.textContent = fmt(b);
+    balance = b; sup.textContent = fmt(ts); bal.textContent = fmt(b);
   } catch { if (!stale()) { sup.textContent = bal.textContent = "—"; } }
-  if (!rec.mintable) { add(card, "p", "fixed supply", { class: "muted small" }); return; }
-  let owner;
-  try { owner = await c.owner(); } catch { owner = null; }
+  // detect real features on chain; fall back to the saved record for older deployments
+  const [gm, gb, gp, gc] = await Promise.all([tryCall(() => c.mintable()), tryCall(() => c.burnable()), tryCall(() => c.pausable()), tryCall(() => c.supplyCap())]);
   if (stale()) return;
-  if (owner == null) { add(card, "p", "fixed supply", { class: "muted small" }); return; }
-  if (owner === ZeroAddress) { add(card, "p", "ownership renounced. supply is now fixed.", { class: "muted small" }); return; }
-  if (owner.toLowerCase() !== account.toLowerCase()) { add(card, "p", "owned by " + short(owner), { class: "muted small" }); return; }
-  mintControls(card, rec, account, gen, () => { card.replaceChildren(); return renderCoin(card, rec, account, provider, gen); });
+  const detected = gm !== null || gb !== null || gp !== null;
+  const f = detected
+    ? { mintable: gm === true, burnable: gb === true, pausable: gp === true, cap: typeof gc === "bigint" ? gc : 0n }
+    : { mintable: !!rec.mintable, burnable: false, pausable: false, cap: 0n };
+  const owner = (f.mintable || f.pausable) ? await tryCall(() => c.owner()) : null;
+  const paused = f.pausable ? await tryCall(() => c.paused()) : null;
+  if (stale()) return;
+  const badge = (t, cls) => add(badges, "span", t, { class: "badge" + (cls ? " " + cls : "") });
+  if (!f.mintable && !f.burnable && !f.pausable) badge("fixed supply");
+  if (f.mintable) badge("mintable");
+  if (f.cap > 0n) badge("cap " + fmt(f.cap));
+  if (f.burnable) badge("burnable");
+  if (f.pausable) badge(paused ? "paused" : "pausable", paused ? "warn" : "");
+  const isOwner = owner && owner !== ZeroAddress && owner.toLowerCase() === account.toLowerCase();
+  if ((f.mintable || f.pausable) && owner === ZeroAddress) add(card, "p", "ownership renounced. mint and pause are permanently locked.", { class: "muted small" });
+  else if ((f.mintable || f.pausable) && owner && !isOwner) add(card, "p", "owned by " + short(owner), { class: "muted small" });
+  const refresh = () => { card.replaceChildren(); return renderCoin(card, rec, account, provider, gen); };
+  if (isOwner || (f.burnable && balance > 0n)) controls(card, rec, account, gen, refresh, { f, isOwner, paused, balance });
 }
 
-function mintControls(card, rec, account, gen, refresh) {
-  const f = add(card, "form", null, { class: "mint", novalidate: "" });
-  add(f, "span", "you own this coin", { class: "muted small" });
-  const to = add(f, "input", null, { type: "text", placeholder: "recipient", value: account, "aria-label": "recipient", spellcheck: "false" });
-  const amt = add(f, "input", null, { type: "text", inputmode: "decimal", placeholder: "amount", "aria-label": "amount to mint" });
-  const row = add(f, "div", null, { class: "mint-row" });
-  const go = add(row, "button", "mint", { type: "submit", class: "primary small-btn" });
-  const ren = add(row, "button", "renounce ownership", { type: "button", class: "secondary danger" });
-  const msg = add(f, "p", null, { class: "error", role: "alert" });
-  const run = async (label, fn) => {
-    msg.textContent = ""; go.disabled = ren.disabled = true;
+function controls(card, rec, account, gen, refresh, { f, isOwner, paused, balance }) {
+  const wrap = add(card, "div", null, { class: "mint" });
+  const msg = add(wrap, "p", null, { class: "error", role: "alert" });
+  const btns = [];
+  const run = async (fn, recheck) => {
+    msg.textContent = ""; btns.forEach((b) => (b.disabled = true));
     try {
       if (gen !== coinGen) throw new Error("wallet changed. reload your coins.");
       const signer = await activeCtx(account);
       const tc = new Contract(rec.address, TOKEN_ABI, signer);
-      if ((await tc.owner()).toLowerCase() !== account.toLowerCase()) throw new Error("you are not the owner anymore.");
+      if (recheck) {
+        if ((await tc.owner()).toLowerCase() !== account.toLowerCase()) throw new Error("you are not the owner anymore.");
+        if (recheck === "unpaused" && (await tc.paused())) throw new Error("coin is paused. unpause before renouncing.");
+      }
       const tx = await fn(tc);
       msg.textContent = "waiting for confirmation…";
       await tx.wait();
       if (gen === coinGen && account === state.account) await refresh();
-    } catch (e) { msg.textContent = errMsg(e); go.disabled = ren.disabled = false; }
+    } catch (e) { msg.textContent = errMsg(e); btns.forEach((b) => (b.disabled = false)); }
   };
-  f.addEventListener("submit", (e) => {
-    e.preventDefault();
-    let recipient, value;
-    try {
-      recipient = to.value.trim() || account;
-      if (!isAddress(recipient)) throw new Error("enter a valid recipient address");
-      recipient = getAddress(recipient);
-      const raw = amt.value.trim().replace(/,/g, "");
+  const amountField = (form, label) => {
+    const i = add(form, "input", null, { type: "text", inputmode: "decimal", placeholder: "amount", "aria-label": label });
+    return () => {
+      const raw = i.value.trim().replace(/,/g, "");
       if (!/^\d+(\.\d{1,18})?$/.test(raw)) throw new Error("enter a positive amount");
-      value = parseUnits(raw, 18);
-      if (value <= 0n || value > MAX_UINT) throw new Error("amount is out of range");
-    } catch (err) { msg.textContent = err.message; return; }
-    run("mint", (tc) => tc.mint(recipient, value));
-  });
-  ren.addEventListener("click", () => {
-    if (!window.confirm("renounce ownership of " + rec.symbol + "?\n\nthis is irreversible. nobody will ever be able to mint more " + rec.symbol + ".")) return;
-    run("renounce", (tc) => tc.renounceOwnership());
-  });
+      const v = parseUnits(raw, 18);
+      if (v <= 0n || v > MAX_UINT) throw new Error("amount is out of range");
+      return v;
+    };
+  };
+  if (isOwner && f.mintable) {
+    const form = add(wrap, "form", null, { novalidate: "", class: "sub-form" });
+    add(form, "span", "mint", { class: "muted small" });
+    const to = add(form, "input", null, { type: "text", placeholder: "recipient", value: account, "aria-label": "recipient", spellcheck: "false" });
+    const getAmt = amountField(form, "amount to mint");
+    const go = add(form, "button", "mint", { type: "submit", class: "primary small-btn" }); btns.push(go);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      let r, v;
+      try {
+        r = to.value.trim() || account;
+        if (!isAddress(r)) throw new Error("enter a valid recipient address");
+        r = getAddress(r); v = getAmt();
+        if (f.cap > 0n) {
+          // best effort; the contract enforces the cap
+        }
+      } catch (err) { msg.textContent = err.message; return; }
+      run((tc) => tc.mint(r, v), true);
+    });
+  }
+  if (f.burnable && balance > 0n) {
+    const form = add(wrap, "form", null, { novalidate: "", class: "sub-form" });
+    add(form, "span", "burn from your balance", { class: "muted small" });
+    const getAmt = amountField(form, "amount to burn");
+    const go = add(form, "button", "burn", { type: "submit", class: "primary small-btn" }); btns.push(go);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      let v;
+      try { v = getAmt(); if (v > balance) throw new Error("that's more than your balance"); } catch (err) { msg.textContent = err.message; return; }
+      if (!window.confirm("burn " + fmt(v) + " " + rec.symbol + "? this permanently destroys them.")) return;
+      run((tc) => tc.burn(v), false);
+    });
+  }
+  if (isOwner) {
+    const row = add(wrap, "div", null, { class: "mint-row" });
+    if (f.pausable) {
+      const pb = add(row, "button", paused ? "unpause" : "pause", { type: "button", class: "secondary" }); btns.push(pb);
+      pb.addEventListener("click", () => {
+        if (!paused && !window.confirm("pause " + rec.symbol + "? all transfers, mints and burns stop until you unpause.")) return;
+        run((tc) => (paused ? tc.unpause() : tc.pause()), true);
+      });
+    }
+    const ren = add(row, "button", "renounce ownership", { type: "button", class: "secondary danger" }); btns.push(ren);
+    if (f.pausable && paused) {
+      ren.disabled = true; ren.title = "unpause first";
+      btns.splice(btns.indexOf(ren), 1);
+      add(wrap, "p", "unpause before renouncing. renouncing while paused would freeze transfers forever.", { class: "muted small" });
+    }
+    ren.addEventListener("click", () => {
+      const lost = [f.mintable && "mint more", f.pausable && "pause or unpause"].filter(Boolean).join(" or ");
+      if (!window.confirm("renounce ownership of " + rec.symbol + "?\n\nthis is irreversible. nobody will ever be able to " + lost + ".")) return;
+      run((tc) => tc.renounceOwnership(), f.pausable ? "unpaused" : true);
+    });
+  }
 }
