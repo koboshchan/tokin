@@ -1,1 +1,42 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><title>Tokin</title><body>Tokin is coming soon.</body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>tokin</title>
+  <script type="module" crossorigin src="/assets/index-DjClhsCB.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-B8GMjgSg.css">
+</head>
+<body>
+<main>
+<header><h1>tokin</h1><p class="sub">make a token on base.</p></header>
+<form id="form" novalidate autocomplete="off">
+<label class="field"><span>name</span><input id="name" maxlength="64" placeholder="my token" required></label>
+<label class="field"><span>ticker</span><input id="symbol" maxlength="12" placeholder="MTK" required spellcheck="false"></label>
+<label class="field"><span>supply</span><input id="supply" inputmode="numeric" placeholder="1000000" required></label>
+<div class="field"><span>image <em>optional</em></span>
+<div class="img-row"><div id="preview" class="preview" aria-hidden="true"></div>
+<button type="button" class="link" id="choose-img">choose</button><input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+<button type="button" id="clear-img" class="link" hidden>remove</button></div></div>
+<fieldset class="options"><legend>options</legend>
+<label class="toggle"><input type="checkbox" id="mintable"><span>mintable <em>mint more later</em></span></label>
+<label class="toggle"><input type="checkbox" id="capped"><span>capped <em>max supply, needs mintable</em></span></label>
+<label class="field" id="cap-field" hidden><span>cap</span><input id="cap" inputmode="numeric" placeholder="10000000"></label>
+<label class="toggle"><input type="checkbox" id="burnable"><span>burnable <em>holders can destroy coins</em></span></label>
+<label class="toggle"><input type="checkbox" id="pausable"><span>pausable <em>owner can freeze transfers</em></span></label>
+</fieldset>
+<p id="form-error" class="error" role="alert"></p>
+<section class="wallet"><div id="wallet-status" class="muted">no wallet connected</div>
+<div id="picker" class="picker" role="group" aria-label="choose a wallet" hidden></div>
+<button type="button" id="connect" class="secondary">connect wallet</button></section>
+<section id="estimate" class="estimate" aria-live="polite" hidden></section>
+<button type="submit" id="primary" class="primary">estimate cost</button>
+<button type="button" id="confirm" class="primary confirm" hidden>confirm and deploy</button>
+</form>
+<section id="result" class="result" aria-live="polite" hidden></section>
+<section id="coins" class="coins" hidden><h2>your coins</h2><p id="coin-note" class="muted"></p><div id="coin-list"></div></section>
+<p class="foot">18 decimals. the whole supply goes to your wallet.</p>
+</main>
+</body>
+</html>
