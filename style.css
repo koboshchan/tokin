@@ -69,3 +69,9 @@ button.danger{color:var(--err)}
 .badge.warn{color:var(--err);border-color:var(--err)}
 .sub-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .sub-form button.small-btn{align-self:flex-start}
+
+.chains{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.chains button{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.chains button[aria-checked="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.lbl{font-weight:inherit}
+.small{font-size:13px}

@@ -9,12 +9,14 @@
 </head>
 <body>
 <main>
-<header><h1>tokin</h1><p class="sub">make a token on base.</p></header>
+<header><h1>tokin</h1><p class="sub" id="sub">make a token on base.</p>
+<div id="chains" class="chains" role="radiogroup" aria-label="network"></div></header>
 <form id="form" novalidate autocomplete="off">
 <label class="field"><span>name</span><input id="name" maxlength="64" placeholder="my token" required></label>
 <label class="field"><span>ticker</span><input id="symbol" maxlength="12" placeholder="MTK" required spellcheck="false"></label>
 <label class="field"><span>supply</span><input id="supply" inputmode="numeric" placeholder="1000000" required></label>
-<div class="field"><span>image <em>optional</em></span>
+<details class="field" id="uri-field" hidden><summary>advanced <em>use your own metadata link</em></summary><label class="field"><span>metadata link <em>https or ipfs json with name, symbol, image</em></span><input id="uri" inputmode="url" maxlength="200" placeholder="ipfs://… or https://…" spellcheck="false"></label></details>
+<div class="field" id="image-field"><span>image <em>optional</em></span>
 <div class="img-row"><div id="preview" class="preview" aria-hidden="true"></div>
 <button type="button" class="link" id="choose-img">choose</button><input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
 <button type="button" id="clear-img" class="link" hidden>remove</button></div></div>
@@ -22,9 +24,10 @@
 <label class="toggle"><input type="checkbox" id="mintable"><span>mintable <em>mint more later</em></span></label>
 <label class="toggle"><input type="checkbox" id="capped"><span>capped <em>max supply, needs mintable</em></span></label>
 <label class="field" id="cap-field" hidden><span>cap</span><input id="cap" inputmode="numeric" placeholder="10000000"></label>
-<label class="toggle"><input type="checkbox" id="burnable"><span>burnable <em>holders can destroy coins</em></span></label>
-<label class="toggle"><input type="checkbox" id="pausable"><span>pausable <em>owner can freeze transfers</em></span></label>
+<label class="toggle" id="burnable-box"><input type="checkbox" id="burnable"><span>burnable <em>holders can destroy coins</em></span></label>
+<label class="toggle"><input type="checkbox" id="pausable"><span><b id="pausable-label" class="lbl">pausable</b> <em id="pausable-hint">owner can freeze transfers</em></span></label>
 </fieldset>
+<p id="sol-note" class="muted small" hidden>freezable lets you freeze or thaw one token account at a time. it is not a global pause. leave it off to make freezing impossible.</p>
 <p id="form-error" class="error" role="alert"></p>
 <section class="wallet"><div id="wallet-status" class="muted">no wallet connected</div>
 <div id="picker" class="picker" role="group" aria-label="choose a wallet" hidden></div>
@@ -35,7 +38,7 @@
 </form>
 <section id="result" class="result" aria-live="polite" hidden></section>
 <section id="coins" class="coins" hidden><h2>your coins</h2><p id="coin-note" class="muted"></p><div id="coin-list"></div></section>
-<p class="foot">18 decimals. the whole supply goes to your wallet.</p>
+<p class="foot" id="foot">18 decimals. the whole supply goes to your wallet.</p>
 </main>
 <script type="module" src="./app.js"></script>
 </body>
