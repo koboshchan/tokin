@@ -1,12 +1,25 @@
 # tokin
-Minimal noncustodial Base token launcher. All signing stays in the injected EVM wallet. No backend, analytics, API keys, or private keys.
 
-`npm ci`, `npm run build`, `npm test`. `node scripts/ui-test.cjs` and `node scripts/ui-wallet-test.cjs` test the served build on port 43871 with Chromium. Tests spend only local simulated ETH, including a Base mainnet fork.
+Minimal noncustodial token launcher for Base, Ethereum, Polygon PoS, BNB Smart Chain and Solana. Signing stays in your injected wallet. Static site, no backend or private keys.
 
-OpenZeppelin ERC20, Burnable, Capped, Pausable, Ownable; solc optimized200 targeting Shanghai. Immutable options. No tax or upgradeability. Cap is outstanding total supply, so burning can create minting headroom. Owner may mint or pause only when selected. Renunciation permanently removes administration; renunciation while paused is prohibited. Fixed supply without pause automatically has no owner.
+## Development
 
-Images are center-cropped to at most128px and capped at8192 UTF-8 data URI bytes in storage. Wallet/explorer logos remain off-chain. Standard JSON compiler inputs are served for reproducibility; deployment does not automatically verify on Basescan.
+`npm ci` then `npm run build`. `npm test` runs original EVM contract tests. `CHAIN_ID=137 FORK_URL=https://polygon.drpc.org node scripts/test-multichain.cjs` runs the full feature matrix against a local Ganache mainnet fork. Repeat for Base (8453), Ethereum (1) and BNB Smart Chain (56). These tests use simulated funds only. UI test scripts use Chromium and the static preview on port 43871.
 
-Your coins are local to this browser and origin, keyed by Base wallet, with feature and ownership reads from chain. Clearing browser storage loses the local list, not tokens. No global on-chain deployment index is claimed. Deployments do not create trading liquidity or price.
+## EVM
 
-The displayed fee estimates L2 execution only, not the Base L1 data fee. The wallet shows the final transaction fee. Review every transaction before signing.
+The same OpenZeppelin ERC20 contract is deployed on each selected chain, compiled with solc optimized200 targeting Shanghai. Burnable, capped, pausable and mintable options are immutable. No tax or upgradeability. A cap limits outstanding supply, so burns create minting headroom. The owner can mint or pause only when selected. Renunciation permanently removes administration; renunciation while paused is prohibited. Fixed supply without pause automatically has no owner.
+
+EVM tokens use 18 decimals. Images are center-cropped to at most128px and limited to8192 UTF-8 data URI bytes in contract storage. Wallet/explorer logos remain separate and off-chain. Public compiler JSON inputs allow reproduction; deployment does not automatically verify the contract on explorers.
+
+Fees are displayed in the selected chain's native currency (ETH, POL or BNB). Base estimates exclude the additional L1 data fee. The wallet displays the final transaction fee.
+
+## Solana
+
+Solana uses the original SPL Token program with 9 decimals and Metaplex token metadata, not the EVM contract. Phantom signs transactions on Solana mainnet. Fixed supply revokes mint authority after initial mint; mintable retains it. Burning is always supported for holders. There is no native supply cap. Freezable retains freeze authority for specific token accounts, not a global pause. Revoking authorities is irreversible.
+
+Solana metadata requires an externally hosted JSON URI with the name, symbol and image URL. Data URIs are not used as Metaplex metadata URIs. This app does not silently upload images, pay for storage or include storage credentials. Use permanent hosting under your control; a mutable web server can change its JSON/image even if the on-chain URI is immutable.
+
+## Your coins
+
+The list is local to this browser and origin, isolated by chain and wallet. Feature/authority and balance reads come from chain. Clearing browser storage loses the list, not the tokens. No global deployment index is claimed. Deploying a token does not create liquidity or a price. Review every wallet transaction before signing.
