@@ -8,3 +8,13 @@ fs.writeFileSync('artifact.json',JSON.stringify({abi:c.abi,bytecode:'0x'+c.evm.b
 for(const p of Object.keys(output.sources)){if(!input.sources[p]) input.sources[p]={content:fs.readFileSync('node_modules/'+p,'utf8')}}
 fs.mkdirSync('public',{recursive:true});fs.writeFileSync('public/standard-input.json',JSON.stringify(input,null,2));fs.copyFileSync('contracts/Tokin.sol','public/Tokin.sol');
 console.log('Compiled',solc.version(),'deployment bytes',c.evm.bytecode.object.length/2);
+
+const mintInput=JSON.parse(JSON.stringify(input));
+mintInput.sources['contracts/TokinMintable.sol']={content:fs.readFileSync('contracts/TokinMintable.sol','utf8')};
+const mintOutput=JSON.parse(solc.compile(JSON.stringify(mintInput),{import:p=>{try{return{contents:fs.readFileSync('node_modules/'+p,'utf8')}}catch{return{error:'Missing import'}}}}));
+for(const e of mintOutput.errors||[]) {if(e.severity==='error'){console.error(e.formattedMessage);process.exit(1)}}
+const m=mintOutput.contracts['contracts/TokinMintable.sol'].TokinMintable;
+fs.writeFileSync('artifact-mintable.json',JSON.stringify({abi:m.abi,bytecode:'0x'+m.evm.bytecode.object,compiler:solc.version(),evmVersion:'shanghai'},null,2));
+for(const p of Object.keys(mintOutput.sources)){if(!mintInput.sources[p]) mintInput.sources[p]={content:fs.readFileSync('node_modules/'+p,'utf8')}}
+fs.writeFileSync('public/standard-input-mintable.json',JSON.stringify(mintInput,null,2));fs.copyFileSync('contracts/TokinMintable.sol','public/TokinMintable.sol');
+console.log('Compiled mintable deployment bytes',m.evm.bytecode.object.length/2);
