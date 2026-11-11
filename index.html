@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>tokin</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main>
+<header><h1>tokin</h1><p class="sub">make a token on base.</p></header>
+<form id="form" novalidate autocomplete="off">
+<label class="field"><span>name</span><input id="name" maxlength="64" placeholder="my token" required></label>
+<label class="field"><span>ticker</span><input id="symbol" maxlength="12" placeholder="MTK" required spellcheck="false"></label>
+<label class="field"><span>supply</span><input id="supply" inputmode="numeric" placeholder="1000000" required></label>
+<div class="field"><span>image <em>optional</em></span>
+<div class="img-row"><div id="preview" class="preview" aria-hidden="true"></div>
+<label class="link" for="image">choose</label><input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+<button type="button" id="clear-img" class="link" hidden>remove</button></div></div>
+<p id="form-error" class="error" role="alert"></p>
+<section class="wallet"><div id="wallet-status" class="muted">no wallet connected</div>
+<div id="picker" class="picker" role="group" aria-label="choose a wallet" hidden></div>
+<button type="button" id="connect" class="secondary">connect wallet</button></section>
+<section id="estimate" class="estimate" aria-live="polite" hidden></section>
+<button type="submit" id="primary" class="primary">estimate cost</button>
+<button type="button" id="confirm" class="primary confirm" hidden>confirm and deploy</button>
+</form>
+<section id="result" class="result" aria-live="polite" hidden></section>
+<p class="foot">18 decimals. the whole supply goes to your wallet.</p>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
