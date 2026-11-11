@@ -17,7 +17,7 @@ const el = {
   confirm: $("confirm"), result: $("result"),
 };
 
-const state = { providers: new Map(), selected: null, account: null, chainId: null, logo: "", estimate: null, busy: false };
+const state = { providers: new Map(), selected: null, account: null, chainId: null, logo: "", estimate: null, busy: false, revision: 0 };
 
 function add(parent, tag, text, attrs = {}) {
   const n = document.createElement(tag);
@@ -72,6 +72,7 @@ function renderStatus() {
 }
 
 function invalidate() {
+  state.revision++;
   state.estimate = null;
   el.est.hidden = true; el.est.replaceChildren();
   el.confirm.hidden = true;
@@ -120,6 +121,8 @@ async function ensureBase() {
 /* image */
 const enc = new TextEncoder();
 async function toLogo(file) {
+  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) throw new Error("choose a PNG, JPEG, WebP or GIF image");
+  if (file.size > 10 * 1024 * 1024) throw new Error("choose an image under 10 MB");
   const bmp = await createImageBitmap(file);
   const side = Math.min(bmp.width, bmp.height);
   const sx = (bmp.width - side) / 2, sy = (bmp.height - side) / 2;
@@ -129,9 +132,10 @@ async function toLogo(file) {
     for (const [type, q] of [["image/webp", 0.8], ["image/webp", 0.5], ["image/png"]]) {
       const uri = c.toDataURL(type, q);
       if (!uri.startsWith("data:" + type)) continue;
-      if (enc.encode(uri).length <= MAX_URI_BYTES) return uri;
+      if (enc.encode(uri).length <= MAX_URI_BYTES) { bmp.close(); return uri; }
     }
   }
+  bmp.close();
   throw new Error("image is too detailed to store on-chain. try a simpler one.");
 }
 function setLogo(uri) {
@@ -139,6 +143,7 @@ function setLogo(uri) {
   el.preview.style.backgroundImage = uri ? 'url("' + uri + '")' : "";
   el.clear.hidden = !uri;
 }
+$("choose-img").addEventListener("click", () => el.image.click());
 el.image.addEventListener("change", async () => {
   setError("");
   const f = el.image.files[0]; el.image.value = "";
@@ -152,6 +157,8 @@ function read() {
   const name = el.name.value.trim(), symbol = el.symbol.value.trim(), raw = el.supply.value.trim().replace(/,/g, "");
   if (!name) throw new Error("add a name");
   if (!symbol) throw new Error("add a ticker");
+  if (enc.encode(name).length > 128) throw new Error("name must fit in 128 UTF-8 bytes");
+  if (enc.encode(symbol).length > 16) throw new Error("ticker must fit in 16 UTF-8 bytes");
   if (!/^\d+$/.test(raw) || BigInt(raw) === 0n) throw new Error("supply must be a whole number above zero");
   const supply = parseUnits(raw, 18);
   if (supply > MAX_UINT) throw new Error("supply is too large");
@@ -177,12 +184,14 @@ el.form.addEventListener("submit", async (e) => {
     if (!state.selected) { await connect(); if (!state.selected) return; }
     setBusy(true, "estimating…");
     await ensureBase();
+    const revision = state.revision;
     const signer = await new BrowserProvider(state.selected).getSigner();
     const { factory, args } = factoryFor(signer, v);
     const tx = await factory.getDeployTransaction(...args);
     const [gas, fee] = await Promise.all([signer.estimateGas(tx), signer.provider.getFeeData()]);
     const price = fee.maxFeePerGas ?? fee.gasPrice;
     if (!price) throw new Error("couldn't read network fees");
+    if (revision !== state.revision) throw new Error("details changed. estimate again.");
     const cost = gas * price;
     state.estimate = { v, gas, cost, account: state.account };
     showEstimate(gas, price, cost);
@@ -209,6 +218,9 @@ el.confirm.addEventListener("click", async () => {
   try {
     if (account !== state.account || state.chainId !== BASE.id) throw new Error("wallet changed. estimate again.");
     setBusy(true, "confirm in your wallet…");
+    const activeChain = Number(await state.selected.request({ method: "eth_chainId" }));
+    const activeAccounts = await state.selected.request({ method: "eth_accounts" });
+    if (activeChain !== BASE.id || activeAccounts[0]?.toLowerCase() !== account.toLowerCase()) { invalidate(); throw new Error("wallet changed. estimate again."); }
     const signer = await new BrowserProvider(state.selected).getSigner();
     const { factory, args } = factoryFor(signer, v);
     const contract = await factory.deploy(...args);
@@ -231,8 +243,9 @@ function showResult(address, v) {
   const btn = add(w, "button", "add to wallet", { type: "button", class: "secondary" });
   btn.addEventListener("click", async () => {
     try {
-      const options = { address, symbol: v.symbol.slice(0, 11), decimals: 18 };
+      const options = { address, symbol: v.symbol, decimals: 18 };
       if (v.logo) options.image = v.logo;
+      await ensureBase();
       await state.selected.request({ method: "wallet_watchAsset", params: { type: "ERC20", options } });
     } catch (e) { setError(errMsg(e)); }
   });

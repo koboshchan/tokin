@@ -39,3 +39,5 @@ button.secondary:hover{text-decoration:underline}
 .result a{color:var(--acc)}
 .result code{display:block;word-break:break-all;background:var(--fill);padding:10px 12px;border-radius:10px;font:13px ui-monospace,SFMono-Regular,Menlo,monospace}
 .foot{color:var(--mut);font-size:13px;margin-top:40px;text-align:center}
+
+[hidden]{display:none!important}
