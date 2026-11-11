@@ -13,7 +13,8 @@ const el = {
   confirm: $("confirm"), result: $("result"), mintable: $("mintable"), burnable: $("burnable"), pausable: $("pausable"), capped: $("capped"), capField: $("cap-field"), cap: $("cap"), coins: $("coins"), coinList: $("coin-list"), coinNote: $("coin-note"), chains: $("chains"), uri: $("uri"), uriField: $("uri-field"), imageField: $("image-field"), sub: $("sub"), foot: $("foot"), pausableLabel: $("pausable-label"), pausableHint: $("pausable-hint"), burnableBox: $("burnable-box"), solNote: $("sol-note"),
 };
 
-const state = { chain: chainByKey(localStorage.getItem("tokin:chain")) || chainByKey(DEFAULT_CHAIN), solAccount: null, providers: new Map(), selected: null, account: null, chainId: null, logo: "", imageFile: null, estimate: null, busy: false, revision: 0 };
+function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+const state = { chain: chainByKey(safeGet("tokin:chain")) || chainByKey(DEFAULT_CHAIN), solAccount: null, providers: new Map(), selected: null, account: null, chainId: null, logo: "", imageFile: null, estimate: null, busy: false, revision: 0 };
 
 function add(parent, tag, text, attrs = {}) {
   const n = document.createElement(tag);
@@ -24,7 +25,7 @@ function add(parent, tag, text, attrs = {}) {
 }
 const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
 const setError = (m) => { el.err.textContent = m || ""; };
-const errMsg = (e) => e?.info?.error?.message || e?.shortMessage || e?.message || "something went wrong";
+const errMsg = (e) => (e?.info?.error?.message || e?.shortMessage || e?.message || "something went wrong") + (e?.uri ? " your metadata is already uploaded and will be reused: " + e.uri : "");
 
 /* wallets */
 function register(key, provider, info) {
@@ -182,7 +183,6 @@ function read() {
     if (enc.encode(symbol).length > 10) throw new Error("ticker must fit in 10 bytes on solana");
     const uri = el.uri.value.trim();
     if (uri && (!/^(https:\/\/|ipfs:\/\/)\S+$/.test(uri) || uri.length > 200)) throw new Error("metadata link must be https or ipfs (max 200 characters)");
-    if (!uri && !state.imageFile) throw new Error("add an image, or a metadata link under advanced");
     return { name, symbol, supply, supplyRaw: raw, uri, image: uri ? null : state.imageFile, mintable: el.mintable.checked, burnable: true, pausable: el.pausable.checked, cap: 0n, logo: "" };
   }
   const mintable = el.mintable.checked, burnable = el.burnable.checked, pausable = el.pausable.checked;
@@ -229,14 +229,20 @@ el.form.addEventListener("submit", async (e) => {
     if (!acct()) { await (isSol() ? connectSol() : connect()); if (!acct()) return; }
     if (chain !== state.chain) return;
     setBusy(true, "estimating…");
-    const revision = state.revision;
     if (chain.kind === "sol") {
+      const revision = state.revision;
       const est = await solAdapter.estimate({ name: v.name, symbol: v.symbol, supply: v.supplyRaw, uri: v.uri || undefined, image: v.image || undefined, mintable: v.mintable, freezable: v.pausable, onStep: (t) => { if (el.confirm.disabled) el.confirm.textContent = t; } });
       if (revision !== state.revision || chain !== state.chain) throw new Error("details changed. estimate again.");
-      state.estimate = { v, chain, account: state.solAccount, lamports: est.lamports };
+      state.estimate = { v, chain, account: state.solAccount, lamports: est.lamports, quote: est.quote };
       showEstimateSol(est);
     } else {
+      const before = JSON.stringify([el.name.value, el.symbol.value, el.supply.value, el.mintable.checked, el.capped.checked, el.cap.value, el.burnable.checked, el.pausable.checked, state.logo]);
+      const acctBefore = state.account, selBefore = state.selected;
       await ensureChain(chain);
+      // switching fires chainChanged which invalidates; capture the revision only after the switch settles
+      const revision = state.revision;
+      const after = JSON.stringify([el.name.value, el.symbol.value, el.supply.value, el.mintable.checked, el.capped.checked, el.cap.value, el.burnable.checked, el.pausable.checked, state.logo]);
+      if (chain !== state.chain || before !== after || acctBefore !== state.account || selBefore !== state.selected || state.chainId !== chain.id) throw new Error("details changed while switching network. estimate again.");
       const signer = await new BrowserProvider(state.selected).getSigner();
       const { factory, args } = factoryFor(signer, v);
       const tx = await factory.getDeployTransaction(...args);
@@ -281,7 +287,7 @@ el.confirm.addEventListener("click", async () => {
     if (chain !== state.chain || account !== acct()) { invalidate(); throw new Error("wallet or network changed. estimate again."); }
     setBusy(true, "confirm in your wallet…");
     if (chain.kind === "sol") {
-      const r = await solAdapter.deploy({ name: v.name, symbol: v.symbol, supply: v.supplyRaw, uri: v.uri || undefined, image: v.image || undefined, mintable: v.mintable, freezable: v.pausable, onStep: (t) => { if (el.confirm.disabled) el.confirm.textContent = t; } });
+      const r = await solAdapter.deploy({ quote: state.estimate.quote, name: v.name, symbol: v.symbol, supply: v.supplyRaw, uri: v.uri || undefined, image: v.image || undefined, mintable: v.mintable, freezable: v.pausable, onStep: (t) => { if (el.confirm.disabled) el.confirm.textContent = t; } });
       saveCoin(chain, account, { address: r.mint, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, burnable: true, pausable: v.pausable, cap: "0", logo: "", uri: v.uri || "", ts: Date.now() });
       showResult(chain, r.mint, v);
       if (chain === state.chain && account === acct()) loadCoins();
@@ -359,7 +365,7 @@ function validSolRecord(r) {
 }
 function loadRecords(chain, acct) {
   try {
-    const arr = JSON.parse(localStorage.getItem(storeKey(chain, acct)) || "[]");
+    const arr = JSON.parse(safeGet(storeKey(chain, acct)) || "[]");
     if (!Array.isArray(arr)) return [];
     const seen = new Set();
     return arr.filter(chain.kind === "sol" ? validSolRecord : validRecord).map((r) => ({ ...r, address: normAddr(chain, r.address) }))
@@ -622,8 +628,15 @@ async function renderSolCoin(card, rec, account, _p, gen, chain) {
 function renderChains() {
   el.chains.replaceChildren();
   for (const c of CHAINS) {
-    const b = add(el.chains, "button", c.name.toLowerCase(), { type: "button", role: "radio", "aria-checked": String(c === state.chain) });
+    const b = add(el.chains, "button", c.name.toLowerCase(), { type: "button", role: "radio", "aria-checked": String(c === state.chain), tabindex: c === state.chain ? "0" : "-1" });
     b.addEventListener("click", () => setChain(c));
+    b.addEventListener("keydown", (e) => {
+      const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (!d) return;
+      e.preventDefault();
+      setChain(CHAINS[(CHAINS.indexOf(c) + d + CHAINS.length) % CHAINS.length]);
+      el.chains.querySelector('[aria-checked="true"]')?.focus();
+    });
   }
 }
 function applyChain() {
