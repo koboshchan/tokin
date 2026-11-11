@@ -18,7 +18,7 @@ Fees are displayed in the selected chain's native currency (ETH, POL or BNB). Ba
 
 Solana uses the original SPL Token program with 9 decimals and Metaplex token metadata, not the EVM contract. Phantom signs transactions on Solana mainnet. Fixed supply revokes mint authority after initial mint; mintable retains it. Burning is always supported for holders. There is no native supply cap. Freezable retains freeze authority for specific token accounts, not a global pause. Revoking authorities is irreversible.
 
-Solana metadata requires an externally hosted JSON URI with the name, symbol and image URL. Data URIs are not used as Metaplex metadata URIs. This app does not silently upload images, pay for storage or include storage credentials. Use permanent hosting under your control; a mutable web server can change its JSON/image even if the on-chain URI is immutable.
+Solana image and JSON uploads use wallet-authorized Irys storage without server secrets. Current Irys uploads target Irys L1, not Arweave: Irys retired its Arweave upload endpoints on November 1, 2026. Storage pricing is quoted before deployment. Uploads and storage funding cannot be rolled back if token creation is declined later. An advanced custom metadata URI also supports externally hosted JSON. Data URIs are not used as Metaplex metadata URIs. A mutable web server can change its JSON/image even if the on-chain URI is immutable.
 
 ## Your coins
 
