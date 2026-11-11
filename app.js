@@ -1,6 +1,5 @@
 import { BrowserProvider, Contract, ContractFactory, formatEther, formatUnits, getAddress, isAddress, parseUnits, ZeroAddress } from "ethers";
 import optionsArtifact from "./artifact-options.json";
-import mintableArtifact from "./artifact-mintable.json";
 
 const BASE = { id: 8453, hex: "0x2105" };
 const BASE_PARAMS = {
@@ -375,7 +374,7 @@ async function renderCoin(card, rec, account, provider, gen) {
   const f = detected
     ? { mintable: gm === true, burnable: gb === true, pausable: gp === true, cap: typeof gc === "bigint" ? gc : 0n }
     : { mintable: !!rec.mintable, burnable: false, pausable: false, cap: 0n };
-  const owner = (f.mintable || f.pausable) ? await tryCall(() => c.owner()) : null;
+  const owner = await tryCall(() => c.owner());
   const paused = f.pausable ? await tryCall(() => c.paused()) : null;
   if (stale()) return;
   const badge = (t, cls) => add(badges, "span", t, { class: "badge" + (cls ? " " + cls : "") });
@@ -438,7 +437,11 @@ function controls(card, rec, account, gen, refresh, { f, isOwner, paused, balanc
           // best effort; the contract enforces the cap
         }
       } catch (err) { msg.textContent = err.message; return; }
-      run((tc) => tc.mint(r, v), true);
+      run(async (tc) => {
+        const currentSupply = await tc.totalSupply();
+        if (f.cap > 0n && currentSupply + v > f.cap) throw new Error("mint would exceed the supply cap");
+        return tc.mint(r, v);
+      }, true);
     });
   }
   if (f.burnable && balance > 0n) {
