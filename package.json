@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "node scripts/compile.cjs",
+    "build": "node scripts/compile.cjs && vite build",
+    "test": "node scripts/test-contract.cjs",
+    "dev": "vite --host 0.0.0.0"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +20,6 @@
     "ganache": "^7.9.2",
     "solc": "^0.8.38",
     "vite": "^8.3.6"
-  }
+  },
+  "private": true
 }
