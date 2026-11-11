@@ -16,7 +16,7 @@ button:focus-visible,.link:focus-visible{outline:2px solid var(--acc);outline-of
 .link{color:var(--acc);cursor:pointer;background:none;border:0;font:inherit;padding:0}
 .link:hover{text-decoration:underline}
 .wallet{margin:28px 0 20px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
-.muted{color:var(--mut);font-size:15px;word-break:break-all}
+.muted{color:var(--mut);font-size:15px;overflow-wrap:anywhere}
 .picker{display:flex;flex-wrap:wrap;gap:8px}
 .picker button{display:flex;align-items:center;gap:8px;font:inherit;font-size:15px;color:inherit;background:var(--fill);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 8px;cursor:pointer}
 .picker img{width:20px;height:20px;border-radius:5px}
@@ -42,9 +42,9 @@ button.secondary:hover{text-decoration:underline}
 
 [hidden]{display:none!important}
 
-.toggle{display:flex;align-items:center;gap:10px;margin:0 0 20px;cursor:pointer}
-.toggle input{width:18px;height:18px;accent-color:var(--acc);margin:0}
-.toggle em{font-style:normal;color:var(--mut);font-size:13px;margin-left:6px}
+.toggle{display:flex;align-items:flex-start;gap:10px;margin:0 0 20px;cursor:pointer}
+.toggle input{width:18px;height:18px;accent-color:var(--acc);margin:2px 0 0}
+.toggle em{font-style:normal;color:var(--mut);font-size:13px;margin-left:6px;display:inline-block}
 .coins{margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}
 .coins h2{font-size:24px;font-weight:600;letter-spacing:-.02em;margin:0 0 12px}
 .coin{background:var(--fill);border-radius:14px;padding:16px;margin-bottom:12px;font-size:15px}
@@ -70,8 +70,8 @@ button.danger{color:var(--err)}
 .sub-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .sub-form button.small-btn{align-self:flex-start}
 
-.chains{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
-.chains button{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.chains{display:grid;grid-template-columns:repeat(5,auto);justify-content:space-between;gap:4px;margin-top:14px}
+.chains button{font:inherit;font-size:12px;padding:6px 8px;white-space:nowrap;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
 .chains button[aria-checked="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .lbl{font-weight:inherit}
 .small{font-size:13px}
