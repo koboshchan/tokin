@@ -21,13 +21,13 @@ const WSURL = process.env.SOL_WS || RPC.replace(/^http/, "ws").replace(/:(\d+)$/
     const page = await browser.newPage({ viewport: { width: 1000, height: 1300 } });
     const errors = []; page.on("pageerror", (e) => errors.push(e.message));
     let delayMs = 0;
-    await page.route("https://api.mainnet-beta.solana.com/**", async (route) => {
+    await page.route("https://solana-rpc.publicnode.com/**", async (route) => {
       if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
       if (process.env.RPCLOG) console.error("rpc", (route.request().postData() || "").slice(0, 140));
       const res = await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: route.request().postData() });
       await route.fulfill({ status: res.status, contentType: "application/json", body: await res.text() });
     });
-    await page.addInitScript((target) => { const NW = window.WebSocket; window.WebSocket = function (u, p) { return new NW(String(u).includes("api.mainnet-beta.solana.com") ? target : u, p); }; window.WebSocket.prototype = NW.prototype; Object.assign(window.WebSocket, { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 }); }, WSURL);
+    await page.addInitScript((target) => { const NW = window.WebSocket; window.WebSocket = function (u, p) { return new NW(String(u).includes("solana-rpc.publicnode.com") ? target : u, p); }; window.WebSocket.prototype = NW.prototype; Object.assign(window.WebSocket, { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 }); }, WSURL);
     await page.exposeFunction("nodeSignSend", async (bytes) => {
       const tx = web3.Transaction.from(Buffer.from(bytes)); tx.partialSign(kp);
       try { const sg = await conn.sendRawTransaction(tx.serialize(), { skipPreflight: false }); return sg; } catch (e) { console.error("node send error:", e.message, (e.logs || []).slice(-4)); throw e; }

@@ -12,7 +12,7 @@ const p = {
   async signAndSendTransaction(tx) {tx.partialSign(owner); return {signature:await c.sendRawTransaction(tx.serialize())};},
 };
 globalThis.window = { phantom: {solana:p} };
-const source = (await readFile(new URL('../solana.js', import.meta.url),'utf8')).replace("const RPC = 'https://api.mainnet-beta.solana.com';", `const RPC = '${RPC}';`).replace("'./solana-uploader.js'", "'../solana-uploader.js'");
+const source = (await readFile(new URL('../solana.js', import.meta.url),'utf8')).replace("import { rpcUrl, rpcFetch } from './solana-rpc.js';","const rpcUrl = () => '"+RPC+"', rpcFetch = undefined;").replace("'./solana-uploader.js'", "'../solana-uploader.js'");
 const runtime = new URL('./test-solana-runtime.mjs',import.meta.url);
 await writeFile(runtime,source);
 try {

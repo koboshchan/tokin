@@ -2,7 +2,8 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { signerIdentity, lamports } from '@metaplex-foundation/umi';
 import { irysUploader } from '@metaplex-foundation/umi-uploader-irys';
 import { Buffer } from 'buffer';
-const RPC = 'https://api.mainnet-beta.solana.com';
+import { Connection } from '@solana/web3.js';
+import { rpcUrl, rpcFetch } from './solana-rpc.js';
 const GATEWAY = 'https://gateway.irys.xyz/';
 const quotes = new Map();
 const completed = new Map();
@@ -15,7 +16,7 @@ async function prepare(p, signer) {
   const image = p.image ? new Uint8Array(await p.image.arrayBuffer()) : null;
   const fingerprint = new Uint8Array(await crypto.subtle.digest('SHA-256', image ?? new Uint8Array()));
   const key = JSON.stringify([signer.publicKey, p.name, p.symbol, p.supply, !!p.mintable, !!p.freezable, p.image?.type, Array.from(fingerprint, x => x.toString(16).padStart(2, '0')).join('')]);
-  const umi = createUmi(RPC).use(signerIdentity(signer)).use(irysUploader({ address: 'https://uploader.irys.xyz', priceMultiplier: 1 }));
+  const umi = createUmi(rpcUrl()).use(signerIdentity(signer)).use(irysUploader({ address: 'https://uploader.irys.xyz', priceMultiplier: 1 }));
   return { key, image, imageType: p.image?.type, uploader: umi.uploader, metadata: new TextEncoder().encode(json(p, image ? GATEWAY + 'x'.repeat(43) : null)) };
 }
 function cachedUri(key) {
@@ -27,6 +28,8 @@ async function price(prepared) {
   const { uploader, image, metadata, imageType } = prepared;
   // Price each data item, not the SDK's aggregated 80KB minimum approximation.
   const irys = await uploader.irys();
+  // Irys builds its own web3 Connection from the URL; replace it so reads use the same fallback fetch.
+  irys.tokenConfig.providerInstance = new Connection(rpcUrl(), { commitment: 'confirmed', fetch: rpcFetch });
   // Quote serialized signed-item size, including tags and signature header.
   const size = (bytes, type) => irys.createTransaction(Buffer.from(bytes), { tags: [{ name: 'Content-Type', value: type }] }).getRaw().length;
   const values = await Promise.all([irys.getPrice(size(metadata, 'application/json')), ...(image ? [irys.getPrice(size(image, imageType))] : [])]);

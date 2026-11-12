@@ -8,11 +8,12 @@ import { toWeb3JsInstruction, toWeb3JsTransaction, fromWeb3JsTransaction } from 
 
 // Buffer must be set before Irys's lazily imported browser SDK runs.
 globalThis.Buffer ??= Buffer;
-const RPC = 'https://api.mainnet-beta.solana.com';
+import { rpcUrl, rpcFetch } from './solana-rpc.js';
 export const DECIMALS = 9;
 export const MAX_U64 = (1n << 64n) - 1n;
 const METADATA_PROGRAM = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
-const connection = new Connection(RPC, 'confirmed');
+let cached;
+function conn() { const u = rpcUrl(); if (cached?.u !== u) cached = { u, c: new Connection(u, { commitment: 'confirmed', fetch: rpcFetch }) }; return cached.c; }
 const listeners = new Set();
 let hookedProvider;
 let actionOwner = null;
@@ -62,7 +63,7 @@ function validate(p) {
   if (p.capped || p.pausable) throw new Error('Classic SPL tokens do not support a cap or global pause.');
 }
 function metadataInstruction(owner, mintAddress, p, uri) {
-  const umi = createUmi(RPC);
+  const umi = createUmi(rpcUrl());
   const signer = createNoopSigner(publicKey(owner.toBase58()));
   const [metadata] = PublicKey.findProgramAddressSync([Buffer.from('metadata'), METADATA_PROGRAM.toBuffer(), mintAddress.toBuffer()], METADATA_PROGRAM);
   return toWeb3JsInstruction(createMetadataAccountV3(umi, {
@@ -89,7 +90,7 @@ export function buildCreateInstructions(owner, mintAddress, p, uri, mintRent) {
 }
 async function sendInstructions(ixs, signers = []) {
   const p = wallet(), owner = p.publicKey;
-  const latest = await connection.getLatestBlockhash('confirmed');
+  const latest = await conn().getLatestBlockhash('confirmed');
   const tx = new Transaction({ ...latest, feePayer: owner }).add(...ixs);
   if (signers.length) tx.partialSign(...signers);
   if (!p.isConnected || !p.publicKey.equals(owner)) throw new Error('Wallet changed before signing.');
@@ -97,7 +98,7 @@ async function sendInstructions(ixs, signers = []) {
   const { signature } = await p.signAndSendTransaction(tx);
   // Do not retry automatically if confirmation times out: the tx may have landed.
   try {
-    const result = await connection.confirmTransaction({ ...latest, signature }, 'confirmed');
+    const result = await conn().confirmTransaction({ ...latest, signature }, 'confirmed');
     if (result.value.err) throw new Error(`Transaction failed: ${JSON.stringify(result.value.err)}`);
   } catch (error) { error.signature = signature; throw error; }
   return signature;
@@ -116,11 +117,11 @@ export async function estimate(params) {
   validate(params); const owner = wallet().publicKey;
   const storage = params.uri ? { lamports: 0n, fundingLamports: 0n, note: '' } : await (await import('./solana-uploader.js')).quoteStorage(params, storageSigner());
   const [mintRent, accountRent, metadataRent, latest] = await Promise.all([
-    connection.getMinimumBalanceForRentExemption(MINT_SIZE), connection.getMinimumBalanceForRentExemption(ACCOUNT_SIZE),
-    connection.getMinimumBalanceForRentExemption(679), connection.getLatestBlockhash('confirmed'),
+    conn().getMinimumBalanceForRentExemption(MINT_SIZE), conn().getMinimumBalanceForRentExemption(ACCOUNT_SIZE),
+    conn().getMinimumBalanceForRentExemption(679), conn().getLatestBlockhash('confirmed'),
   ]);
   const tx = new Transaction({ ...latest, feePayer: owner }).add(...buildCreateInstructions(owner, Keypair.generate().publicKey, params, params.uri || 'https://gateway.irys.xyz/' + 'x'.repeat(43), mintRent));
-  const fee = (await connection.getFeeForMessage(tx.compileMessage(), 'confirmed')).value;
+  const fee = (await conn().getFeeForMessage(tx.compileMessage(), 'confirmed')).value;
   if (fee === null) throw new Error('RPC could not estimate the Solana network fee.');
   // Includes conservative protocol-fee reserve. Actual protocol charge may be lower.
   const protocolReserve = 10000000n;
@@ -138,23 +139,23 @@ async function deployAction(params) {
     if (wallet().publicKey.toBase58() !== owner) throw new Error('Wallet changed during upload. Reconnect the original wallet.');
     params.onStep?.('Approve token creation in Phantom');
     const mintKey = Keypair.generate();
-    const rent = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
+    const rent = await conn().getMinimumBalanceForRentExemption(MINT_SIZE);
     const signature = await sendInstructions(buildCreateInstructions(new PublicKey(owner), mintKey.publicKey, params, uri, rent), [mintKey]);
     return { mint: mintKey.publicKey.toBase58(), signature, uri };
   } catch (error) { error.uri = uri; throw error; }
 }
 export async function getCoin(mintAddress, ownerAddress) {
   const mintKey = new PublicKey(mintAddress), owner = new PublicKey(ownerAddress);
-  const state = await getMint(connection, mintKey);
+  const state = await getMint(conn(), mintKey);
   if (state.decimals !== DECIMALS) throw new Error('Only 9-decimal classic SPL tokens are supported.');
   const ata = getAssociatedTokenAddressSync(mintKey, owner);
   // getTokenAccountBalance cannot distinguish nonexistent ATA from RPC failure.
-  const info = await connection.getAccountInfo(ata);
-  const account = info ? await getAccount(connection, ata) : null;
+  const info = await conn().getAccountInfo(ata);
+  const account = info ? await getAccount(conn(), ata) : null;
   return { supply: state.supply, decimals: DECIMALS, balance: account?.amount ?? 0n, mintAuthority: state.mintAuthority?.toBase58() ?? null, freezeAuthority: state.freezeAuthority?.toBase58() ?? null };
 }
 async function requireAuthority(mintAddress, kind) {
-  const state = await getMint(connection, new PublicKey(mintAddress));
+  const state = await getMint(conn(), new PublicKey(mintAddress));
   if (state.decimals !== DECIMALS) throw new Error('Only 9-decimal classic SPL tokens are supported.');
   if (!state[kind]?.equals(wallet().publicKey)) throw new Error(`This wallet does not hold ${kind}.`);
   return state;
@@ -169,7 +170,7 @@ async function mintAction(mintAddress, to, amount) {
 async function burnAction(mintAddress, amount) {
   checkAmount(amount); const mintKey = new PublicKey(mintAddress), owner = wallet().publicKey;
   const ata = getAssociatedTokenAddressSync(mintKey, owner);
-  const [state, account] = await Promise.all([getMint(connection, mintKey), getAccount(connection, ata)]);
+  const [state, account] = await Promise.all([getMint(conn(), mintKey), getAccount(conn(), ata)]);
   if (state.decimals !== DECIMALS || account.isFrozen || account.amount < amount) throw new Error('Balance is insufficient or the account is frozen.');
   return sendInstructions([createBurnCheckedInstruction(ata, mintKey, owner, amount, DECIMALS)]);
 }
@@ -183,14 +184,14 @@ export function assertNoFrozenAccounts(accounts) {
 async function revokeFreezeAction(mintAddress) {
   await requireAuthority(mintAddress, 'freezeAuthority');
   // Fail closed: a provider that blocks this scan cannot safely renounce.
-  const accounts = await connection.getProgramAccounts(TOKEN_PROGRAM_ID, { commitment: 'confirmed', minContextSlot: await connection.getSlot('confirmed'), filters: [{ dataSize: ACCOUNT_SIZE }, { memcmp: { offset: 0, bytes: new PublicKey(mintAddress).toBase58() } }] });
+  const accounts = await conn().getProgramAccounts(TOKEN_PROGRAM_ID, { commitment: 'confirmed', minContextSlot: await conn().getSlot('confirmed'), filters: [{ dataSize: ACCOUNT_SIZE }, { memcmp: { offset: 0, bytes: new PublicKey(mintAddress).toBase58() } }] });
   assertNoFrozenAccounts(accounts);
   return sendInstructions([createSetAuthorityInstruction(new PublicKey(mintAddress), wallet().publicKey, AuthorityType.FreezeAccount, null)]);
 }
 async function setFrozen(mintAddress, accountAddress, frozen) {
   await requireAuthority(mintAddress, 'freezeAuthority');
   const mintKey = new PublicKey(mintAddress), key = new PublicKey(accountAddress);
-  const account = await getAccount(connection, key);
+  const account = await getAccount(conn(), key);
   if (!account.mint.equals(mintKey)) throw new Error('Token account belongs to a different mint.');
   if (account.isFrozen === frozen) throw new Error(frozen ? 'Account is already frozen.' : 'Account is already thawed.');
   return sendInstructions([(frozen ? createFreezeAccountInstruction : createThawAccountInstruction)(key, mintKey, wallet().publicKey)]);

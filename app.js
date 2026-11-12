@@ -3,6 +3,7 @@ import optionsArtifact from "./artifact-options.json";
 
 import { CHAINS, chainByKey, DEFAULT_CHAIN, addParams } from "./chains.js";
 import * as solAdapter from "./sol-adapter.js";
+import { customRpc, setCustomRpc } from "./solana-rpc.js";
 const MAX_UINT = (1n << 256n) - 1n;
 const MAX_URI_BYTES = 8192;
 const $ = (id) => document.getElementById(id);
@@ -196,6 +197,8 @@ function read() {
   }
   return { name, symbol, supply, logo: state.logo, mintable, burnable, pausable, cap };
 }
+const rpcInput = $("rpc"); rpcInput.value = customRpc();
+rpcInput.addEventListener("change", () => { try { setCustomRpc(rpcInput.value); rpcInput.value = customRpc(); setError(""); invalidate(); } catch (e) { rpcInput.value = customRpc(); setError(e.message); } });
 for (const i of [el.name, el.symbol, el.supply, el.uri]) i.addEventListener("input", () => { setError(""); invalidate(); });
 
 function syncCap() {
