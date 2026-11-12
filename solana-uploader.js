@@ -1,3 +1,4 @@
+import { acceptedId } from './irys-id.js';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { signerIdentity, lamports } from '@metaplex-foundation/umi';
 import { irysUploader } from '@metaplex-foundation/umi-uploader-irys';
@@ -75,10 +76,7 @@ export async function uploadMetadata(p, signer) {
     let result;
     try { result = await current.irys.uploader.uploadTransaction(tx); }
     catch (e) { throw new Error('Irys upload failed: ' + String(e?.message || e).slice(0, 300)); }
-    const d = result?.data;
-    const id = d?.id ?? d?.data?.id ?? result?.id ?? tx.id;
-    const body = typeof d === 'string' ? d : JSON.stringify(d ?? null);
-    if (result?.status >= 300 || !/^[A-Za-z0-9_-]{43}$/.test(id ?? '')) throw new Error('Irys upload not accepted (HTTP ' + result?.status + '): ' + String(body).slice(0, 300));
+    const id = acceptedId(result);
     return GATEWAY + id;
   };
   let imageUri = imageUploads.get(prepared.key);
