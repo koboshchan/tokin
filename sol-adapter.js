@@ -12,6 +12,7 @@ export const connect = call("connect");
 export const disconnect = call("disconnect");
 export const estimate = call("estimate");
 export const deploy = call("deploy");
+export const ackDeploy = call("ackDeploy");
 export const getCoin = call("getCoin");
 export const mint = call("mint");
 export const burn = call("burn");

@@ -8,7 +8,15 @@ import { toWeb3JsInstruction, toWeb3JsTransaction, fromWeb3JsTransaction } from 
 
 // Buffer must be set before Irys's lazily imported browser SDK runs.
 globalThis.Buffer ??= Buffer;
-import { rpcUrl, rpcFetch } from './solana-rpc.js';
+import { rpcUrl, rpcFetch, DEFAULT_RPCS, customRpc, makeConnection } from './solana-rpc.js';
+import { confirmWithRecovery, resumePending, makeJournal, deployWithJournal, acknowledgeDeploy } from './solana-confirmation.mjs';
+// app.js hooks: persist a pending signature before confirmation, clear on settle.
+let onPendingSignature, onSettledSignature;
+export function setSignatureHooks(h = {}) { onPendingSignature = h.onPending; onSettledSignature = h.onSettled; }
+const readerSet = () => [conn(), ...(customRpc() ? [] : DEFAULT_RPCS.filter(u => u !== rpcUrl()).map(u => makeConnection(Connection, u)))];
+export const resumeSignature = sig => resumePending(sig, readerSet());
+const store = { get: k => globalThis.localStorage.getItem(k), set: (k, v) => globalThis.localStorage.setItem(k, v), remove: k => globalThis.localStorage.removeItem(k) };
+export function ackDeploy(signature) { acknowledgeDeploy(makeJournal(store), wallet().publicKey.toBase58(), signature); }
 export const DECIMALS = 9;
 export const MAX_U64 = (1n << 64n) - 1n;
 const METADATA_PROGRAM = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
@@ -88,7 +96,7 @@ export function buildCreateInstructions(owner, mintAddress, p, uri, mintRent) {
   if (!p.mintable) ixs.push(createSetAuthorityInstruction(mintAddress, owner, AuthorityType.MintTokens, null));
   return ixs;
 }
-async function sendInstructions(ixs, signers = []) {
+async function sendInstructions(ixs, signers = [], onSignature) {
   const p = wallet(), owner = p.publicKey;
   const latest = await conn().getLatestBlockhash('confirmed');
   const tx = new Transaction({ ...latest, feePayer: owner }).add(...ixs);
@@ -96,12 +104,10 @@ async function sendInstructions(ixs, signers = []) {
   if (!p.isConnected || !p.publicKey.equals(owner)) throw new Error('Wallet changed before signing.');
   wallet();
   const { signature } = await p.signAndSendTransaction(tx);
-  // Do not retry automatically if confirmation times out: the tx may have landed.
-  try {
-    const result = await conn().confirmTransaction({ ...latest, signature }, 'confirmed');
-    if (result.value.err) throw new Error(`Transaction failed: ${JSON.stringify(result.value.err)}`);
-  } catch (error) { error.signature = signature; throw error; }
-  return signature;
+  // Never resend. Signature is captured first; expiry falls back to exact-signature reads across RPCs.
+  const c = conn(), readers = readerSet();
+  try { return await confirmWithRecovery({ signature, latest, confirm: (a, b) => c.confirmTransaction(a, b), readers, onPending: async sig => { await onSignature?.(sig); onPendingSignature?.(sig); }, onSettled: (sig, res) => onSettledSignature?.(sig, res) }); }
+  catch (error) { error.signature = signature; throw error; }
 }
 export function storageSigner() {
   const p = wallet(), expected = p.publicKey.toBase58();
@@ -131,19 +137,16 @@ export async function estimate(params) {
 }
 async function deployAction(params) {
   validate(params); const owner = wallet().publicKey.toBase58();
-  let uri = params.uri;
-  if (!uri) {
-    const { uploadMetadata } = await import('./solana-uploader.js');
-    uri = await uploadMetadata(params, storageSigner());
-  }
-  try {
-    if (wallet().publicKey.toBase58() !== owner) throw new Error('Wallet changed during upload. Reconnect the original wallet.');
-    params.onStep?.('Approve token creation in Phantom');
-    const mintKey = Keypair.generate();
-    const rent = await conn().getMinimumBalanceForRentExemption(MINT_SIZE);
-    const signature = await sendInstructions(buildCreateInstructions(new PublicKey(owner), mintKey.publicKey, params, uri, rent), [mintKey]);
-    return { mint: mintKey.publicKey.toBase58(), signature, uri };
-  } catch (error) { error.uri = uri; throw error; }
+  return deployWithJournal({ owner, params, journal: makeJournal(store), resume: resumeSignature,
+    upload: async () => { const { uploadMetadata } = await import('./solana-uploader.js'); return uploadMetadata(params, storageSigner()); },
+    create: async (uri, onSignature) => {
+      if (wallet().publicKey.toBase58() !== owner) throw new Error('Wallet changed during upload. Reconnect the original wallet.');
+      params.onStep?.('Approve token creation in Phantom');
+      const mintKey = Keypair.generate(), mint = mintKey.publicKey.toBase58();
+      const rent = await conn().getMinimumBalanceForRentExemption(MINT_SIZE);
+      const signature = await sendInstructions(buildCreateInstructions(new PublicKey(owner), mintKey.publicKey, params, uri, rent), [mintKey], sig => onSignature(sig, mint));
+      return { mint, signature };
+    } });
 }
 export async function getCoin(mintAddress, ownerAddress) {
   const mintKey = new PublicKey(mintAddress), owner = new PublicKey(ownerAddress);

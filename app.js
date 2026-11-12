@@ -285,14 +285,22 @@ function showEstimateSol(est) {
 el.confirm.addEventListener("click", async () => {
   if (state.busy || !state.estimate) return;
   setError("");
-  const { v, account, chain } = state.estimate;
+  const { account, chain } = state.estimate;
+  let v = state.estimate.v;
   try {
     if (chain !== state.chain || account !== acct()) { invalidate(); throw new Error("wallet or network changed. estimate again."); }
     setBusy(true, "confirm in your wallet…");
     if (chain.kind === "sol") {
       const r = await solAdapter.deploy({ quote: state.estimate.quote, name: v.name, symbol: v.symbol, supply: v.supplyRaw, uri: v.uri || undefined, image: v.image || undefined, mintable: v.mintable, freezable: v.pausable, onStep: (t) => { if (el.confirm.disabled) el.confirm.textContent = t; } });
-      if (!r?.mint || !r.signature || r.confirmed === false || r.pending) { const e = new Error("the network hasn't confirmed this token yet. check the transaction before trying again."); e.signature = r?.signature; throw e; }
-      saveCoin(chain, account, { address: r.mint, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, burnable: true, pausable: v.pausable, cap: "0", logo: "", uri: r.uri || v.uri || "", signature: r.signature, ts: Date.now() });
+      if (!r?.mint || !r.signature || r.confirmed !== true) { const e = new Error("the network hasn't confirmed this token yet. check the transaction before trying again."); e.signature = r?.signature; e.mint = r?.mint; throw e; }
+      const rp = r.recoveredParams;
+      if (rp) {
+        if (typeof rp.name !== "string" || typeof rp.symbol !== "string" || !/^(0|[1-9]\d*)(\.\d{1,9})?$/.test(String(rp.supply)) || parseUnits(String(rp.supply), 9) <= 0n) throw Object.assign(new Error("recovered token details look wrong. check the transaction."), { signature: r.signature, mint: r.mint });
+        v = { ...v, name: rp.name, symbol: rp.symbol, supplyRaw: String(rp.supply), supply: parseUnits(String(rp.supply), 9), mintable: !!rp.mintable, pausable: !!rp.freezable, burnable: true, uri: r.uri || "" };
+      }
+      const saved = saveCoin(chain, account, { address: r.mint, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, burnable: true, pausable: v.pausable, cap: "0", logo: "", uri: r.uri || v.uri || "", signature: r.signature, ts: Date.now() });
+      if (!saved) throw Object.assign(new Error("token confirmed, but browser storage could not save it. retry to recover this same transaction, not a new mint."), { signature: r.signature, mint: r.mint });
+      await solAdapter.ackDeploy(r.signature);
       showResult(chain, r.mint, v);
       if (chain === state.chain && account === acct()) loadCoins();
       return;
@@ -388,8 +396,10 @@ function saveCoin(chain, acct, rec) {
   try {
     const list = loadRecords(chain, acct).filter((r) => r.address !== normAddr(chain, rec.address));
     list.unshift({ ...rec, address: normAddr(chain, rec.address) });
-    localStorage.setItem(storeKey(chain, acct), JSON.stringify(list.slice(0, 100)));
-  } catch { /* storage unavailable */ }
+    const data = JSON.stringify(list.slice(0, 100));
+    localStorage.setItem(storeKey(chain, acct), data);
+    return localStorage.getItem(storeKey(chain, acct)) === data;
+  } catch { return false; }
 }
 const fmt = (n) => { const s = formatUnits(n, 18); const [i, f = ""] = s.split("."); return i.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (f !== "0" && f ? "." + f.slice(0, 4) : ""); };
 

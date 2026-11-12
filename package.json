@@ -8,7 +8,9 @@
     "build": "node scripts/compile.cjs && vite build",
     "test": "node scripts/test-contract.cjs && node scripts/test-mintable.cjs && node scripts/test-options.cjs",
     "dev": "vite --host 0.0.0.0",
-    "test:solana": "node scripts/test-solana.mjs"
+    "test:solana": "node scripts/test-solana.mjs",
+    "test:solana-confirmation": "node scripts/test-solana-confirmation.mjs",
+    "test:app-persistence": "node scripts/test-app-persistence.mjs"
   },
   "keywords": [],
   "author": "",
