@@ -62,14 +62,23 @@ export async function uploadMetadata(p, signer) {
     p.onStep?.('Approve separate Irys storage funding in Phantom');
     await prepared.uploader.fund(lamports(current.funding), true);
   }
+  { // wait for deposit credit before uploading (never fund twice)
+    const need = current.maximum; let ok = false;
+    for (let i = 0; i < 30 && !ok; i++) { ok = (await prepared.uploader.getBalance()).basisPoints >= need || current.funding === 0n; if (!ok) { p.onStep?.('Waiting for Irys to credit your deposit'); await new Promise(r => setTimeout(r, 4000)); } }
+    if (!ok) throw new Error('Deposit not credited by Irys yet. Wait a minute and try again; you will not be charged twice.');
+  }
   // No SDK upload()/uploadJson(): those helpers auto-fund. Raw signed uploads
   // only spend the explicit deposit already approved above.
   const upload = async (bytes, type) => {
     const tx = current.irys.createTransaction(Buffer.from(bytes), { tags: [{ name: 'Content-Type', value: type }] });
     await tx.sign();
-    const result = await current.irys.uploader.uploadTransaction(tx);
-    const id = result.data?.id;
-    if (result.status >= 300 || !/^[A-Za-z0-9_-]{43}$/.test(id ?? '')) throw new Error('Irys upload was not accepted.');
+    let result;
+    try { result = await current.irys.uploader.uploadTransaction(tx); }
+    catch (e) { throw new Error('Irys upload failed: ' + String(e?.message || e).slice(0, 300)); }
+    const d = result?.data;
+    const id = d?.id ?? d?.data?.id ?? result?.id ?? tx.id;
+    const body = typeof d === 'string' ? d : JSON.stringify(d ?? null);
+    if (result?.status >= 300 || !/^[A-Za-z0-9_-]{43}$/.test(id ?? '')) throw new Error('Irys upload not accepted (HTTP ' + result?.status + '): ' + String(body).slice(0, 300));
     return GATEWAY + id;
   };
   let imageUri = imageUploads.get(prepared.key);
