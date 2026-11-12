@@ -122,15 +122,17 @@ export async function fundOnce({ irys, amount, owner, assertOwner, connections, 
     }
     if (!registered) throw fail('Confirmed deposit is not registered by Irys yet: ' + text(last) + '. Retry to register this same signature.', signature);
     // Retain the guard through credit lag. Never let a second click top up again.
+    let credited;
     for (let i = 0; i < creditAttempts; i++) {
       assertOwner();
       onStep?.('Waiting for Irys to credit your deposit');
       try {
-        if (await getBalance() >= maximum) { clear(owner); return signature; }
+        credited = await getBalance();
+        if (credited >= maximum) { clear(owner); return signature; }
       } catch { /* transient credit read, retry only reads */ }
       if (i + 1 < creditAttempts) await sleep(Math.min(1000 * 2 ** i, 5000));
     }
-    throw fail('Deposit registered but Irys balance is not credited yet. Retry to check the same deposit.', signature);
+    throw fail('Deposit registered but Irys balance is not credited yet or is below the required upload ceiling' + (credited === undefined ? '' : ': ' + credited + ' lamports available, ' + maximum + ' required') + '. Retry to check the same deposit; no new payment will be sent.', signature);
   } catch (e) {
     // Even a chain error is retained for inspection, never automatically rebroadcast.
     if (!e.signature) { e.signature = signature; e.message += ' Funding signature: ' + signature + '. No SOL transaction was resent.'; }

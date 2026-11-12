@@ -13,21 +13,47 @@ const imageUploads = new Map();
 function json(p, image) {
   return JSON.stringify({ name: p.name, symbol: p.symbol, description: '', ...(image ? { image, properties: { files: [{ uri: image, type: p.image.type }] } } : {}) });
 }
+const IRYS_URI = /^https:\/\/gateway\.irys\.xyz\/[A-Za-z0-9_-]{43,44}$/;
+const hex = async b => [...new Uint8Array(await crypto.subtle.digest('SHA-256', b))].map(x => x.toString(16).padStart(2, '0')).join('');
+// Resolve a trusted already-uploaded image URI once: our own cache, or ?recoverImage=<id> whose bytes hash-match the selected image.
+export async function resolveImageUri(key, image, { fetchFn = globalThis.fetch, search = globalThis.location?.search || '', store = globalThis.localStorage } = {}) {
+  if (!image) return null;
+  let uri = imageUploads.get(key);
+  try { uri ||= store?.getItem('tokin.solana.image.' + key); } catch {}
+  if (uri && !IRYS_URI.test(uri)) uri = null;
+  if (!uri) {
+    const rid = new URLSearchParams(search).get('recoverImage');
+    if (rid && /^[A-Za-z0-9_-]{43,44}$/.test(rid)) {
+      try {
+        const res = await fetchFn(GATEWAY + rid);
+        if (!res?.ok || res.status !== 200) throw new Error('image fetch failed');
+        const got = new Uint8Array(await res.arrayBuffer());
+        if (await hex(got) === await hex(image)) uri = GATEWAY + rid;
+      } catch {}
+    }
+  }
+  if (!uri) return null;
+  imageUploads.set(key, uri);
+  try { store?.setItem('tokin.solana.image.' + key, uri); } catch {}
+  return uri;
+}
 async function prepare(p, signer) {
   if (p.image && (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(p.image.type) || p.image.size > 5 * 1024 * 1024 || p.image.size === 0)) throw new Error('Image must be a PNG, JPEG, WebP or GIF, up to 5 MB.');
   const image = p.image ? new Uint8Array(await p.image.arrayBuffer()) : null;
   const fingerprint = new Uint8Array(await crypto.subtle.digest('SHA-256', image ?? new Uint8Array()));
   const key = JSON.stringify([signer.publicKey, p.name, p.symbol, p.supply, !!p.mintable, !!p.freezable, p.image?.type, Array.from(fingerprint, x => x.toString(16).padStart(2, '0')).join('')]);
   const umi = createUmi(rpcUrl()).use(signerIdentity(signer)).use(irysUploader({ address: 'https://uploader.irys.xyz', priceMultiplier: 1 }));
-  return { key, image, imageType: p.image?.type, uploader: umi.uploader, metadata: new TextEncoder().encode(json(p, image ? GATEWAY + 'x'.repeat(44) : null)) };
+  const imageUri = await resolveImageUri(key, image);
+  return { key, image, imageUri, imageType: p.image?.type, uploader: umi.uploader, metadata: new TextEncoder().encode(json(p, image ? imageUri || GATEWAY + 'x'.repeat(44) : null)) };
 }
 function cachedUri(key) {
   let value = completed.get(key);
   try { value ||= localStorage.getItem('tokin.solana.upload.' + key); } catch { /* private mode */ }
   return typeof value === 'string' && /^https:\/\/gateway\.irys\.xyz\/[A-Za-z0-9_-]{43,44}$/.test(value) ? value : null;
 }
-async function price(prepared) {
-  const { uploader, image, metadata, imageType } = prepared;
+export async function price(prepared) {
+  const { uploader, metadata, imageType } = prepared;
+  const image = prepared.imageUri ? null : prepared.image; // an already-uploaded, verified image costs nothing
   // Price each data item, not the SDK's aggregated 80KB minimum approximation.
   const irys = await uploader.irys();
   // Irys builds its own web3 Connection from the URL; replace it so reads use the same fallback fetch.
@@ -93,20 +119,7 @@ export async function uploadMetadata(p, signer) {
     const id = acceptedId(result);
     return GATEWAY + id;
   };
-  let imageUri = imageUploads.get(prepared.key);
-  try { imageUri ||= localStorage.getItem('tokin.solana.image.' + prepared.key); } catch {}
-  if (imageUri && !/^https:\/\/gateway\.irys\.xyz\/[A-Za-z0-9_-]{43,44}$/.test(imageUri)) imageUri = null;
-  if (prepared.image && !imageUri) {
-    // Narrow recovery: ?recoverImage=<irys id> reuses an existing upload only if its SHA-256 equals the selected image.
-    const rid = new URLSearchParams(location.search).get('recoverImage');
-    if (rid && /^[A-Za-z0-9_-]{43,44}$/.test(rid)) {
-      try {
-        const sha = async b => [...new Uint8Array(await crypto.subtle.digest('SHA-256', b))].map(x => x.toString(16).padStart(2, '0')).join('');
-        const got = new Uint8Array(await (await fetch(GATEWAY + rid)).arrayBuffer());
-        if (await sha(got) === await sha(prepared.image)) imageUri = GATEWAY + rid;
-      } catch {}
-    }
-  }
+  let imageUri = prepared.imageUri;
   if (prepared.image && !imageUri) {
     p.onStep?.('Sign and upload your image to Irys L1'); imageUri = await upload(prepared.image, p.image.type);
     imageUploads.set(prepared.key, imageUri);
