@@ -22,3 +22,8 @@ Funding now sends once, saves signature immediately, polls only signature status
 No priority-fee amount/instruction is requested for storage funding. Existing quote ceiling, separate confirmation, wallet owner checks and cached image/metadata behavior retained.
 
 Automated checks use entirely mocked RPC and SDK objects. No browser, chain send, wallet access or funds used. Live mainnet deploy test is explicitly gated on a new user go.
+
+Processed-deposit recovery, November 11 2026
+The actual confirmed mainnet registration returned HTTP200 body "Tx already processed (confirmed)" instead of SDK expected202. This is acknowledged only for exact duplicate-response text, JSON-encoded string, or message/error object fields on HTTP200. An ACK does not prove spendable credit: bounded getBalance polling must succeed before releasing pending guard or uploading. HTTP202 behavior unchanged. Axios response objects are handled equivalently. All retry paths reuse the persisted signature; no new create/send call.
+Pending quote drift can no longer abort deposit recovery or advertise a new storage payment. New-payment price ceilings remain unchanged.
+21 mocked funding groups pass, including actual duplicate response, delayed credit, timeout and changed-ceiling retry with zero new broadcasts. Six source-pattern checks cover uploader guards but are not runtime integration coverage. Existing contract tests, ID tests and full production build pass. No wallet or chain sends in these tests.

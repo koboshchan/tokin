@@ -1,0 +1,11 @@
+import { readFileSync } from 'node:fs';
+const s = readFileSync(new URL('../solana-uploader.js', import.meta.url), 'utf8');
+const u = s.slice(s.indexOf('export async function uploadMetadata'));
+const ok = (c, m) => { if (!c) { console.error('FAIL ' + m); process.exit(1); } console.log('PASS ' + m); };
+ok(u.indexOf('const pending = hasPendingFunding') < u.indexOf('current.maximum > prior.maximum'), 'pending computed before quote guard');
+ok(/if \(!pending && \(current\.maximum > prior\.maximum/.test(u), 'quote guard skipped when pending');
+ok(/current\.funding > 0n && !pending/.test(u), 'no confirm when pending');
+ok(/amount: pending \? 0n : current\.funding, maximum: current\.maximum/.test(u), 'pending amount 0, credit target current maximum');
+const q = s.slice(s.indexOf('export async function quoteStorage'), s.indexOf('export async function uploadMetadata'));
+ok(/pending[\s\S]*fundingLamports: 0n[\s\S]*already pending/.test(q), 'quote shows no new funding when pending');
+ok(/fundingLamports: quote\.funding \+ \(quote\.funding > 0n \? 5000n : 0n\)/.test(q), 'new deposits keep full ceiling');

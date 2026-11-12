@@ -20,6 +20,27 @@ function clear(owner) {
 }
 export function hasPendingFunding(owner) { return !!load(owner); }
 
+// Registration ACK is not a balance credit. Only this endpoint's exact duplicate
+// response may proceed to credit polling; arbitrary "processed" errors may not.
+export function registrationAcknowledged(response) {
+  if (response?.status === 202) return true;
+  if (response?.status !== 200) return false;
+  let data = response.data;
+  for (let i = 0; i < 3; i++) {
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); continue; } catch {}
+      return /^tx already processed(?:\s*\(confirmed\))?\.?$/i.test(data.trim());
+    }
+    if (data && typeof data === 'object') {
+      data = data.message ?? data.error;
+      continue;
+    }
+    return false;
+  }
+  return typeof data === 'string' && /^tx already processed(?:\s*\(confirmed\))?\.?$/i.test(data.trim());
+}
+
+
 // These are READ calls only. Each Connection uses the app's timeout/fallback RPC fetch.
 // Query alternate read endpoints on null, not just HTTP errors, to handle indexing lag.
 export async function visibleFunding(connections, signature, finality) {
@@ -90,8 +111,8 @@ export async function fundOnce({ irys, amount, owner, assertOwner, connections, 
       // its built-in retries are too short for a different RPC's finality/index lag.
       let response;
       try { response = await irys.api.post('/account/balance/' + irys.token, { tx_id: signature }, { timeout: 8000 }); }
-      catch (e) { last = e; }
-      if (response?.status === 202) { registered = true; break; }
+      catch (e) { last = e; response = e?.response; }
+      if (registrationAcknowledged(response)) { registered = true; break; }
       if (response) {
         const detail = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
         last = new Error('Irys HTTP ' + response.status + ': ' + detail.slice(0, 300));

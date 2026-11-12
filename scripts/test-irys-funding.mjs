@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { fundOnce, visibleFunding, hasPendingFunding } from '../irys-funding.mjs';
+import { fundOnce, visibleFunding, hasPendingFunding, registrationAcknowledged } from '../irys-funding.mjs';
 let n = 0;
 const storage = new Map();
 globalThis.localStorage = { getItem: k => storage.get(k) ?? null, setItem: (k,v) => storage.set(k,v), removeItem: k => storage.delete(k) };
@@ -112,4 +112,41 @@ await test('persisted signature from earlier page is reused, not re-sent', async
 await test('no funding amount and no pending deposit sends nothing', async () => {
   const f = fixture(); f.options.amount = 0n; await fundOnce(f.options); assert.equal(f.sends, 0);
 });
-console.log('17 funding test groups passed; all mocked, no network or wallet spend.');
+await test('actual HTTP200 duplicate registration formats are ACKs only', async () => {
+  for (const data of ['Tx already processed', 'Tx already processed (confirmed)', '"Tx already processed"', { message: 'Tx already processed' }, { error: 'Tx already processed (confirmed)' }]) {
+    assert.equal(registrationAcknowledged({ status: 200, data }), true);
+  }
+  for (const data of ['not processed', 'Tx already processed for another account', { message: 'invalid recipient' }, 'Confirmed tx not found']) {
+    assert.equal(registrationAcknowledged({ status: 200, data }), false);
+  }
+  assert.equal(registrationAcknowledged({ status: 500, data: 'Tx already processed' }), false);
+  assert.equal(registrationAcknowledged({ status: 200, data: {} }), false);
+});
+await test('actual persisted deposit duplicate ACK waits for delayed credit with zero broadcasts', async () => {
+  const f = fixture(), signature = 'signature-' + f.owner;
+  storage.set('tokin.solana.pending-fund.' + f.owner, JSON.stringify({ signature, state: 'pending', amount: '2786' }));
+  f.options.amount = 0n;
+  f.irys.api.post = async () => { f.registers++; return { status: 200, data: 'Tx already processed' }; };
+  f.options.getBalance = async () => ++f.reads < 3 ? 0n : 2780n;
+  assert.equal(await fundOnce(f.options), signature);
+  assert.equal(f.reads, 3); assert.equal(f.registers, 1); assert.equal(f.sends, 0); assert.equal(f.creates, 0);
+});
+await test('duplicate ACK without credit times out guarded and retry never creates payment', async () => {
+  const f = fixture();
+  storage.set('tokin.solana.pending-fund.' + f.owner, JSON.stringify({ signature: 'signature-' + f.owner, state: 'pending' }));
+  f.irys.api.post = async () => { f.registers++; return { status: 200, data: { message: 'Tx already processed (confirmed)' } }; };
+  f.options.getBalance = async () => 0n;
+  await assert.rejects(fundOnce(f.options), /not credited yet/);
+  assert.equal(hasPendingFunding(f.owner), true);
+  f.options.maximum = 9000n; f.options.amount = 9000n; // changed quote must not fund
+  f.options.getBalance = async () => 9000n;
+  await fundOnce(f.options);
+  assert.equal(f.sends, 0); assert.equal(f.creates, 0); assert.equal(f.registers, 2);
+});
+await test('Axios response duplicate ACK also polls balance before completion', async () => {
+  const f = fixture();
+  f.irys.api.post = async () => { throw Object.assign(new Error('HTTP reply'), { response: { status: 200, data: 'Tx already processed' } }); };
+  f.options.getBalance = async () => { f.reads++; return 2780n; };
+  await fundOnce(f.options); assert.equal(f.reads, 1); assert.equal(f.sends, 1);
+});
+console.log('21 funding test groups passed; all mocked, no network or wallet spend.');

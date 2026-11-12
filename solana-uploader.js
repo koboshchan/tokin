@@ -47,6 +47,13 @@ export async function quoteStorage(p, signer) {
   const prepared = await prepare(p, signer);
   if (cachedUri(prepared.key)) { quotes.set(prepared.key, { maximum: 0n, funding: 0n, until: Date.now() + 300000 }); return { lamports: 0n, fundingLamports: 0n, note: 'Reuses previously uploaded metadata; no new storage payment.' }; }
   const quote = await price(prepared);
+  const pending = hasPendingFunding(signer.publicKey);
+  if (pending) {
+    // An existing deposit is recovered, never topped up. Record the ceiling only; no new funding is quoted.
+    quotes.set(prepared.key, { maximum: quote.maximum, funding: 0n, until: Date.now() + 300000 });
+    return { lamports: quote.maximum, fundingLamports: 0n,
+      note: `Irys L1 permanent storage quote ${quote.raw} lamports, with a 10% ceiling. Your earlier storage deposit is already pending and will be reused; no new storage payment will be requested.` };
+  }
   quotes.set(prepared.key, { maximum: quote.maximum, funding: quote.funding, until: Date.now() + 300000 });
   return { lamports: quote.maximum, fundingLamports: quote.funding + (quote.funding > 0n ? 5000n : 0n),
     note: `Irys L1 permanent storage quote ${quote.raw} lamports, with a 10% ceiling; new storage funding ${quote.funding} lamports plus up to 5000 lamports network fee. Storage charges are nonrefundable if token creation is cancelled.` };
@@ -57,8 +64,9 @@ export async function uploadMetadata(p, signer) {
   const prior = quotes.get(prepared.key);
   if (!prior || Date.now() > prior.until) throw new Error('Estimate again before uploading. Storage quotes expire after 5 minutes.');
   const current = await price(prepared);
-  if (current.maximum > prior.maximum || current.funding > prior.funding) throw new Error('Storage price or balance changed. Estimate again before approving storage.');
+  // A pending deposit is recovered first: quote drift must never block it or cause a new payment.
   const pending = hasPendingFunding(signer.publicKey);
+  if (!pending && (current.maximum > prior.maximum || current.funding > prior.funding)) throw new Error('Storage price or balance changed. Estimate again before approving storage.');
   if (current.funding > 0n && !pending) {
     const text = `Fund permanent Irys L1 storage with up to ${current.funding} lamports (${Number(current.funding) / 1e9} SOL), plus Solana network fees? This is separate from token creation and cannot be refunded if you cancel the mint.`;
     if (!globalThis.window?.confirm(text)) throw new Error('Storage funding cancelled.');
@@ -68,7 +76,7 @@ export async function uploadMetadata(p, signer) {
   if (current.funding > 0n || pending) {
     const endpoints = customRpc() ? [rpcUrl()] : DEFAULT_RPCS;
     await fundOnce({
-      irys: current.irys, amount: current.funding, maximum: current.maximum,
+      irys: current.irys, amount: pending ? 0n : current.funding, maximum: current.maximum,
       owner: signer.publicKey, assertOwner: signer.assertOwner,
       connections: endpoints.map(url => new Connection(url, { commitment: 'finalized', fetch: rpcFetch })),
       getBalance: async () => (await prepared.uploader.getBalance()).basisPoints, onStep: p.onStep,
