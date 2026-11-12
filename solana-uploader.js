@@ -18,12 +18,12 @@ async function prepare(p, signer) {
   const fingerprint = new Uint8Array(await crypto.subtle.digest('SHA-256', image ?? new Uint8Array()));
   const key = JSON.stringify([signer.publicKey, p.name, p.symbol, p.supply, !!p.mintable, !!p.freezable, p.image?.type, Array.from(fingerprint, x => x.toString(16).padStart(2, '0')).join('')]);
   const umi = createUmi(rpcUrl()).use(signerIdentity(signer)).use(irysUploader({ address: 'https://uploader.irys.xyz', priceMultiplier: 1 }));
-  return { key, image, imageType: p.image?.type, uploader: umi.uploader, metadata: new TextEncoder().encode(json(p, image ? GATEWAY + 'x'.repeat(43) : null)) };
+  return { key, image, imageType: p.image?.type, uploader: umi.uploader, metadata: new TextEncoder().encode(json(p, image ? GATEWAY + 'x'.repeat(44) : null)) };
 }
 function cachedUri(key) {
   let value = completed.get(key);
   try { value ||= localStorage.getItem('tokin.solana.upload.' + key); } catch { /* private mode */ }
-  return typeof value === 'string' && /^https:\/\/gateway\.irys\.xyz\/[A-Za-z0-9_-]{43}$/.test(value) ? value : null;
+  return typeof value === 'string' && /^https:\/\/gateway\.irys\.xyz\/[A-Za-z0-9_-]{43,44}$/.test(value) ? value : null;
 }
 async function price(prepared) {
   const { uploader, image, metadata, imageType } = prepared;
@@ -81,11 +81,11 @@ export async function uploadMetadata(p, signer) {
   };
   let imageUri = imageUploads.get(prepared.key);
   try { imageUri ||= localStorage.getItem('tokin.solana.image.' + prepared.key); } catch {}
-  if (imageUri && !/^https:\/\/gateway\.irys\.xyz\/[A-Za-z0-9_-]{43}$/.test(imageUri)) imageUri = null;
+  if (imageUri && !/^https:\/\/gateway\.irys\.xyz\/[A-Za-z0-9_-]{43,44}$/.test(imageUri)) imageUri = null;
   if (prepared.image && !imageUri) {
     // Narrow recovery: ?recoverImage=<irys id> reuses an existing upload only if its SHA-256 equals the selected image.
     const rid = new URLSearchParams(location.search).get('recoverImage');
-    if (rid && /^[A-Za-z0-9_-]{43}$/.test(rid)) {
+    if (rid && /^[A-Za-z0-9_-]{43,44}$/.test(rid)) {
       try {
         const sha = async b => [...new Uint8Array(await crypto.subtle.digest('SHA-256', b))].map(x => x.toString(16).padStart(2, '0')).join('');
         const got = new Uint8Array(await (await fetch(GATEWAY + rid)).arrayBuffer());

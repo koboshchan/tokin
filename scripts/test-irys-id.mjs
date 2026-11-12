@@ -11,3 +11,8 @@ assert.equal(acceptedId({ status: 200, data: JSON.stringify({ data: { id } }) })
 assert.throws(() => acceptedId({ status: 200, data: '{bad' }));
 assert.throws(() => acceptedId({ status: 500, data: JSON.stringify({ id }) }));
 console.log('irys id tests pass');
+const id44 = 'FBEQhZaWRWQ4cz5b6MsbdLsvrBpyVmY9QXitdktcWAoJ', id44b = '5zdq1S5h6ot2q3ReNcBya6tSgFfekjgmRpnMrYWmgSQx';
+assert.equal(id44.length, 44); assert.equal(id44b.length, 44);
+for (const x of [id44, id44b, 'FBEQhZaWRWQ4cz5b6MsbdLsvrBpyVmY9QXitdktcWAo']) assert.equal(acceptedId({ status: 200, data: JSON.stringify({ id: x }) }), x);
+for (const x of [id44.slice(0, 42), id44 + 'a', id44.slice(0, 43) + '!', '']) assert.throws(() => acceptedId({ status: 200, data: JSON.stringify({ id: x }) }));
+console.log('44-char and malformed id tests pass');
