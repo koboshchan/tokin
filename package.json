@@ -7,21 +7,36 @@
     "compile": "node scripts/compile.cjs",
     "build": "node scripts/compile.cjs && vite build",
     "test": "node scripts/test-contract.cjs && node scripts/test-mintable.cjs && node scripts/test-options.cjs",
-    "dev": "vite --host 0.0.0.0"
+    "dev": "vite --host 0.0.0.0",
+    "test:solana": "node scripts/test-solana.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.4.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.4.1",
+    "@metaplex-foundation/umi-uploader-irys": "^1.4.1",
+    "@metaplex-foundation/umi-web3js-adapters": "^1.4.1",
     "@openzeppelin/contracts": "^5.6.1",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "buffer": "^6.0.3",
     "ethers": "^6.17.0"
   },
   "private": true,
   "devDependencies": {
-    "solc": "^0.8.38",
+    "@playwright/test": "^1.65.0",
     "ganache": "^7.9.2",
+    "solc": "^0.8.38",
     "vite": "^8.3.6",
-    "@playwright/test": "^1.65.0"
+    "vite-plugin-node-polyfills": "^0.28.0"
+  },
+  "overrides": {
+    "@ethersproject/providers": {
+      "ws": "^8.21.0"
+    }
   }
 }

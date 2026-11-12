@@ -1,0 +1,868 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@ethersproject/abstract-provider": {
+      "name": "@ethersproject/abstract-provider",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/transactions"
+      ],
+      "effects": [
+        "@ethersproject/abstract-signer",
+        "@ethersproject/providers",
+        "@ethersproject/wallet"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@ethersproject/abstract-provider"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/abstract-signer": {
+      "name": "@ethersproject/abstract-signer",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/abstract-provider"
+      ],
+      "effects": [
+        "@ethersproject/hash",
+        "@ethersproject/hdnode",
+        "@ethersproject/json-wallets",
+        "@ethersproject/providers",
+        "@ethersproject/wallet"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@ethersproject/abstract-signer"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/hash": {
+      "name": "@ethersproject/hash",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/abstract-signer"
+      ],
+      "effects": [
+        "@ethersproject/providers",
+        "@ethersproject/wallet",
+        "@ethersproject/wordlists",
+        "@irys/bundles"
+      ],
+      "range": "5.0.6 - 5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/hash"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/hdnode": {
+      "name": "@ethersproject/hdnode",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/abstract-signer",
+        "@ethersproject/signing-key",
+        "@ethersproject/transactions",
+        "@ethersproject/wordlists"
+      ],
+      "effects": [
+        "@ethersproject/json-wallets",
+        "@ethersproject/wallet"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@ethersproject/hdnode"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/json-wallets": {
+      "name": "@ethersproject/json-wallets",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/abstract-signer",
+        "@ethersproject/hdnode",
+        "@ethersproject/transactions"
+      ],
+      "effects": [
+        "@ethersproject/wallet"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@ethersproject/json-wallets"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/providers": {
+      "name": "@ethersproject/providers",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/abstract-provider",
+        "@ethersproject/abstract-signer",
+        "@ethersproject/hash",
+        "@ethersproject/transactions"
+      ],
+      "effects": [
+        "@irys/bundles"
+      ],
+      "range": "<=5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/providers"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/signing-key": {
+      "name": "@ethersproject/signing-key",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "elliptic"
+      ],
+      "effects": [
+        "@ethersproject/hdnode",
+        "@ethersproject/transactions",
+        "@ethersproject/wallet",
+        "@irys/bundles"
+      ],
+      "range": "<=5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/signing-key"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/transactions": {
+      "name": "@ethersproject/transactions",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/signing-key"
+      ],
+      "effects": [
+        "@ethersproject/abstract-provider",
+        "@ethersproject/hdnode",
+        "@ethersproject/json-wallets",
+        "@ethersproject/providers",
+        "@ethersproject/wallet",
+        "@irys/bundles"
+      ],
+      "range": "<=5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/transactions"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/wallet": {
+      "name": "@ethersproject/wallet",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/abstract-provider",
+        "@ethersproject/abstract-signer",
+        "@ethersproject/hash",
+        "@ethersproject/hdnode",
+        "@ethersproject/json-wallets",
+        "@ethersproject/signing-key",
+        "@ethersproject/transactions",
+        "@ethersproject/wordlists"
+      ],
+      "effects": [
+        "@irys/bundles"
+      ],
+      "range": "<=5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/wallet"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@ethersproject/wordlists": {
+      "name": "@ethersproject/wordlists",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/hash"
+      ],
+      "effects": [
+        "@ethersproject/hdnode",
+        "@ethersproject/wallet"
+      ],
+      "range": "5.0.8 - 5.8.0",
+      "nodes": [
+        "node_modules/@ethersproject/wordlists"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@irys/bundles": {
+      "name": "@irys/bundles",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@ethersproject/hash",
+        "@ethersproject/providers",
+        "@ethersproject/signing-key",
+        "@ethersproject/transactions",
+        "@ethersproject/wallet",
+        "secp256k1"
+      ],
+      "effects": [
+        "@irys/upload",
+        "@irys/upload-core",
+        "@irys/upload-solana",
+        "@irys/web-upload",
+        "@irys/web-upload-solana"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@irys/bundles",
+        "node_modules/@irys/upload-solana/node_modules/@irys/bundles",
+        "node_modules/@irys/web-upload-solana/node_modules/@irys/bundles"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@irys/upload": {
+      "name": "@irys/upload",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@irys/bundles",
+        "@irys/upload-core",
+        "csv-parse"
+      ],
+      "effects": [
+        "@irys/upload-solana",
+        "@metaplex-foundation/umi-uploader-irys"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@irys/upload",
+        "node_modules/@irys/upload-solana/node_modules/@irys/upload"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@irys/upload-core": {
+      "name": "@irys/upload-core",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@irys/bundles"
+      ],
+      "effects": [
+        "@irys/upload",
+        "@irys/upload-solana",
+        "@irys/web-upload",
+        "@irys/web-upload-solana"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@irys/upload-core",
+        "node_modules/@irys/upload-solana/node_modules/@irys/upload-core",
+        "node_modules/@irys/web-upload-solana/node_modules/@irys/upload-core"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@irys/upload-solana": {
+      "name": "@irys/upload-solana",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@irys/bundles",
+        "@irys/upload",
+        "@irys/upload-core",
+        "@solana/spl-token",
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@metaplex-foundation/umi-uploader-irys"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@irys/upload-solana"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@irys/web-upload": {
+      "name": "@irys/web-upload",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@irys/bundles",
+        "@irys/upload-core"
+      ],
+      "effects": [
+        "@irys/web-upload-solana",
+        "@metaplex-foundation/umi-uploader-irys"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@irys/web-upload",
+        "node_modules/@irys/web-upload-solana/node_modules/@irys/web-upload"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@irys/web-upload-solana": {
+      "name": "@irys/web-upload-solana",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@irys/bundles",
+        "@irys/upload-core",
+        "@irys/web-upload",
+        "@solana/spl-token",
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@metaplex-foundation/umi-uploader-irys"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@irys/web-upload-solana"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@metaplex-foundation/umi-bundle-defaults": {
+      "name": "@metaplex-foundation/umi-bundle-defaults",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@metaplex-foundation/umi-eddsa-web3js",
+        "@metaplex-foundation/umi-rpc-web3js",
+        "@metaplex-foundation/umi-transaction-factory-web3js",
+        "@solana/web3.js"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/@metaplex-foundation/umi-bundle-defaults"
+      ],
+      "fixAvailable": false
+    },
+    "@metaplex-foundation/umi-eddsa-web3js": {
+      "name": "@metaplex-foundation/umi-eddsa-web3js",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@metaplex-foundation/umi-web3js-adapters",
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@metaplex-foundation/umi-bundle-defaults"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@metaplex-foundation/umi-eddsa-web3js"
+      ],
+      "fixAvailable": false
+    },
+    "@metaplex-foundation/umi-rpc-web3js": {
+      "name": "@metaplex-foundation/umi-rpc-web3js",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@metaplex-foundation/umi-web3js-adapters",
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@metaplex-foundation/umi-bundle-defaults"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@metaplex-foundation/umi-rpc-web3js"
+      ],
+      "fixAvailable": false
+    },
+    "@metaplex-foundation/umi-transaction-factory-web3js": {
+      "name": "@metaplex-foundation/umi-transaction-factory-web3js",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@metaplex-foundation/umi-web3js-adapters",
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@metaplex-foundation/umi-bundle-defaults"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@metaplex-foundation/umi-transaction-factory-web3js"
+      ],
+      "fixAvailable": false
+    },
+    "@metaplex-foundation/umi-uploader-irys": {
+      "name": "@metaplex-foundation/umi-uploader-irys",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@irys/upload",
+        "@irys/upload-solana",
+        "@irys/web-upload",
+        "@irys/web-upload-solana",
+        "@metaplex-foundation/umi-web3js-adapters",
+        "@solana/web3.js"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/@metaplex-foundation/umi-uploader-irys"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@metaplex-foundation/umi-web3js-adapters": {
+      "name": "@metaplex-foundation/umi-web3js-adapters",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@metaplex-foundation/umi-eddsa-web3js",
+        "@metaplex-foundation/umi-rpc-web3js",
+        "@metaplex-foundation/umi-transaction-factory-web3js",
+        "@metaplex-foundation/umi-uploader-irys"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@metaplex-foundation/umi-web3js-adapters"
+      ],
+      "fixAvailable": false
+    },
+    "@solana/buffer-layout-utils": {
+      "name": "@solana/buffer-layout-utils",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@solana/web3.js",
+        "bigint-buffer"
+      ],
+      "effects": [
+        "@solana/spl-token"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@solana/buffer-layout-utils"
+      ],
+      "fixAvailable": {
+        "name": "@solana/spl-token",
+        "version": "0.1.8",
+        "isSemVerMajor": true
+      }
+    },
+    "@solana/spl-token": {
+      "name": "@solana/spl-token",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@solana/buffer-layout-utils",
+        "@solana/spl-token-group",
+        "@solana/spl-token-metadata",
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@irys/upload-solana",
+        "@irys/web-upload-solana"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@solana/spl-token"
+      ],
+      "fixAvailable": {
+        "name": "@solana/spl-token",
+        "version": "0.1.8",
+        "isSemVerMajor": true
+      }
+    },
+    "@solana/spl-token-group": {
+      "name": "@solana/spl-token-group",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@solana/spl-token"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@solana/spl-token-group"
+      ],
+      "fixAvailable": {
+        "name": "@solana/spl-token",
+        "version": "0.1.8",
+        "isSemVerMajor": true
+      }
+    },
+    "@solana/spl-token-metadata": {
+      "name": "@solana/spl-token-metadata",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@solana/web3.js"
+      ],
+      "effects": [
+        "@solana/spl-token"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@solana/spl-token-metadata"
+      ],
+      "fixAvailable": {
+        "name": "@solana/spl-token",
+        "version": "0.1.8",
+        "isSemVerMajor": true
+      }
+    },
+    "@solana/web3.js": {
+      "name": "@solana/web3.js",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "jayson"
+      ],
+      "effects": [
+        "@irys/upload-solana",
+        "@irys/web-upload-solana",
+        "@metaplex-foundation/umi-bundle-defaults",
+        "@metaplex-foundation/umi-eddsa-web3js",
+        "@metaplex-foundation/umi-rpc-web3js",
+        "@metaplex-foundation/umi-transaction-factory-web3js",
+        "@metaplex-foundation/umi-uploader-irys",
+        "@metaplex-foundation/umi-web3js-adapters",
+        "@solana/buffer-layout-utils",
+        "@solana/spl-token",
+        "@solana/spl-token-group",
+        "@solana/spl-token-metadata"
+      ],
+      "range": "<=0.0.0-pr-29130 || 0.0.4 - 1.99.0",
+      "nodes": [
+        "node_modules/@solana/web3.js"
+      ],
+      "fixAvailable": false
+    },
+    "bigint-buffer": {
+      "name": "bigint-buffer",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1103747,
+          "name": "bigint-buffer",
+          "dependency": "bigint-buffer",
+          "title": "bigint-buffer Vulnerable to Buffer Overflow via toBigIntLE() Function",
+          "url": "https://github.com/advisories/GHSA-3gc7-fjrx-p6mg",
+          "severity": "high",
+          "cwe": [
+            "CWE-120"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=1.1.5"
+        }
+      ],
+      "effects": [
+        "@solana/buffer-layout-utils"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/bigint-buffer"
+      ],
+      "fixAvailable": {
+        "name": "@solana/spl-token",
+        "version": "0.1.8",
+        "isSemVerMajor": true
+      }
+    },
+    "csv-parse": {
+      "name": "csv-parse",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1193670,
+          "name": "csv-parse",
+          "dependency": "csv-parse",
+          "title": "node-csv: Prototype replacement still reachable via columns path",
+          "url": "https://github.com/advisories/GHSA-8cw4-87c7-c6xx",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<7.0.2"
+        }
+      ],
+      "effects": [
+        "@irys/upload"
+      ],
+      "range": "<7.0.2",
+      "nodes": [
+        "node_modules/csv-parse"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "elliptic": {
+      "name": "elliptic",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1112030,
+          "name": "elliptic",
+          "dependency": "elliptic",
+          "title": "Elliptic Uses a Cryptographic Primitive with a Risky Implementation",
+          "url": "https://github.com/advisories/GHSA-848j-6mx2-7j84",
+          "severity": "low",
+          "cwe": [
+            "CWE-1240"
+          ],
+          "cvss": {
+            "score": 5.6,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:L"
+          },
+          "range": "<=6.6.1"
+        }
+      ],
+      "effects": [
+        "@ethersproject/signing-key",
+        "secp256k1"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/elliptic"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "jayson": {
+      "name": "jayson",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "stream-json",
+        "uuid"
+      ],
+      "effects": [
+        "@solana/web3.js"
+      ],
+      "range": "2.0.6 - 4.3.0",
+      "nodes": [
+        "node_modules/jayson"
+      ],
+      "fixAvailable": false
+    },
+    "secp256k1": {
+      "name": "secp256k1",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "elliptic"
+      ],
+      "effects": [
+        "@irys/bundles"
+      ],
+      "range": ">=2.0.0",
+      "nodes": [
+        "node_modules/secp256k1"
+      ],
+      "fixAvailable": {
+        "name": "@metaplex-foundation/umi-uploader-irys",
+        "version": "0.9.2",
+        "isSemVerMajor": true
+      }
+    },
+    "stream-json": {
+      "name": "stream-json",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1164823,
+          "name": "stream-json",
+          "dependency": "stream-json",
+          "title": "stream-json: pick/ignore/filter/replace filters are O(depth²) on nested input — small crafted JSON blocks the event loop for seconds→minutes (DoS)",
+          "url": "https://github.com/advisories/GHSA-528h-pc64-c93x",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-407"
+          ],
+          "cvss": {
+            "score": 6.2,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=3.4.0"
+        },
+        {
+          "source": 1241262,
+          "name": "stream-json",
+          "dependency": "stream-json",
+          "title": "stream-json: JSONC parser and verifier re-scan the whole accumulated comment on every input chunk",
+          "url": "https://github.com/advisories/GHSA-hqr4-qq8f-hg3x",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-407"
+          ],
+          "cvss": {
+            "score": 6.2,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=3.5.0"
+        },
+        {
+          "source": 1241263,
+          "name": "stream-json",
+          "dependency": "stream-json",
+          "title": "stream-json has a prototype pollution issue: Assembler writes this.current[this.key] on plain objects",
+          "url": "https://github.com/advisories/GHSA-mjw6-4jj6-33hc",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 5.1,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L"
+          },
+          "range": "<3.6.0"
+        }
+      ],
+      "effects": [
+        "jayson"
+      ],
+      "range": "<=3.5.0",
+      "nodes": [
+        "node_modules/stream-json"
+      ],
+      "fixAvailable": false
+    },
+    "uuid": {
+      "name": "uuid",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1119441,
+          "name": "uuid",
+          "dependency": "uuid",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-787",
+            "CWE-1285"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<11.1.1"
+        }
+      ],
+      "effects": [
+        "jayson"
+      ],
+      "range": "<11.1.1",
+      "nodes": [
+        "node_modules/uuid"
+      ],
+      "fixAvailable": false
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 15,
+      "moderate": 13,
+      "high": 6,
+      "critical": 0,
+      "total": 34
+    },
+    "dependencies": {
+      "prod": 284,
+      "dev": 0,
+      "optional": 21,
+      "peer": 4,
+      "peerOptional": 0,
+      "total": 306
+    }
+  }
+}
