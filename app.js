@@ -291,7 +291,8 @@ el.confirm.addEventListener("click", async () => {
     setBusy(true, "confirm in your wallet…");
     if (chain.kind === "sol") {
       const r = await solAdapter.deploy({ quote: state.estimate.quote, name: v.name, symbol: v.symbol, supply: v.supplyRaw, uri: v.uri || undefined, image: v.image || undefined, mintable: v.mintable, freezable: v.pausable, onStep: (t) => { if (el.confirm.disabled) el.confirm.textContent = t; } });
-      saveCoin(chain, account, { address: r.mint, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, burnable: true, pausable: v.pausable, cap: "0", logo: "", uri: v.uri || "", ts: Date.now() });
+      if (!r?.mint || !r.signature || r.confirmed === false || r.pending) { const e = new Error("the network hasn't confirmed this token yet. check the transaction before trying again."); e.signature = r?.signature; throw e; }
+      saveCoin(chain, account, { address: r.mint, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, burnable: true, pausable: v.pausable, cap: "0", logo: "", uri: r.uri || v.uri || "", signature: r.signature, ts: Date.now() });
       showResult(chain, r.mint, v);
       if (chain === state.chain && account === acct()) loadCoins();
       return;
@@ -308,7 +309,15 @@ el.confirm.addEventListener("click", async () => {
     saveCoin(chain, account, { address, name: v.name, symbol: v.symbol, supply: v.supply.toString(), mintable: v.mintable, burnable: v.burnable, pausable: v.pausable, cap: v.cap.toString(), logo: v.logo, ts: Date.now() });
     showResult(chain, address, v);
     if (chain === state.chain && account === state.account) loadCoins();
-  } catch (err) { setError(errMsg(err)); }
+  } catch (err) {
+    setError(errMsg(err));
+    if (chain.kind === "sol" && typeof err?.signature === "string" && /^[1-9A-HJ-NP-Za-km-z]{80,90}$/.test(err.signature)) {
+      el.err.append(" transaction: ");
+      add(el.err, "a", err.signature.slice(0, 8) + "…", { href: "https://solscan.io/tx/" + err.signature, target: "_blank", rel: "noopener noreferrer" });
+      if (typeof err.mint === "string" && B58.test(err.mint)) el.err.append(" · mint " + err.mint);
+      el.err.append(". do not deploy again until you've checked it.");
+    }
+  }
   finally { setBusy(false); el.confirm.textContent = "confirm and deploy"; }
 });
 
