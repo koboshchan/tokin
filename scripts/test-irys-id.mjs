@@ -6,4 +6,8 @@ assert.equal(acceptedId({ status: 200, data: { data: { id } } }), id);
 assert.throws(() => acceptedId({ status: 200, data: { error: 'nope' } }));
 assert.throws(() => acceptedId({ status: 402, data: { id } }));
 assert.throws(() => acceptedId({ status: 200, data: 'x' }));
+assert.equal(acceptedId({ status: 200, data: JSON.stringify({ id, timestamp: 1, version: '1.0.0', public: 'm' }) }), id);
+assert.equal(acceptedId({ status: 200, data: JSON.stringify({ data: { id } }) }), id);
+assert.throws(() => acceptedId({ status: 200, data: '{bad' }));
+assert.throws(() => acceptedId({ status: 500, data: JSON.stringify({ id }) }));
 console.log('irys id tests pass');

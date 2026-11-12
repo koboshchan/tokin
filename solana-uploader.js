@@ -83,6 +83,17 @@ export async function uploadMetadata(p, signer) {
   try { imageUri ||= localStorage.getItem('tokin.solana.image.' + prepared.key); } catch {}
   if (imageUri && !/^https:\/\/gateway\.irys\.xyz\/[A-Za-z0-9_-]{43}$/.test(imageUri)) imageUri = null;
   if (prepared.image && !imageUri) {
+    // Narrow recovery: ?recoverImage=<irys id> reuses an existing upload only if its SHA-256 equals the selected image.
+    const rid = new URLSearchParams(location.search).get('recoverImage');
+    if (rid && /^[A-Za-z0-9_-]{43}$/.test(rid)) {
+      try {
+        const sha = async b => [...new Uint8Array(await crypto.subtle.digest('SHA-256', b))].map(x => x.toString(16).padStart(2, '0')).join('');
+        const got = new Uint8Array(await (await fetch(GATEWAY + rid)).arrayBuffer());
+        if (await sha(got) === await sha(prepared.image)) imageUri = GATEWAY + rid;
+      } catch {}
+    }
+  }
+  if (prepared.image && !imageUri) {
     p.onStep?.('Sign and upload your image to Irys L1'); imageUri = await upload(prepared.image, p.image.type);
     imageUploads.set(prepared.key, imageUri);
     try { localStorage.setItem('tokin.solana.image.' + prepared.key, imageUri); } catch {}
