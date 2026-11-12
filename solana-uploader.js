@@ -1,10 +1,11 @@
 import { acceptedId } from './irys-id.mjs';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { signerIdentity, lamports } from '@metaplex-foundation/umi';
+import { signerIdentity } from '@metaplex-foundation/umi';
 import { irysUploader } from '@metaplex-foundation/umi-uploader-irys';
 import { Buffer } from 'buffer';
 import { Connection } from '@solana/web3.js';
-import { rpcUrl, rpcFetch } from './solana-rpc.js';
+import { rpcUrl, rpcFetch, customRpc, DEFAULT_RPCS } from './solana-rpc.js';
+import { fundOnce, hasPendingFunding } from './irys-funding.mjs';
 const GATEWAY = 'https://gateway.irys.xyz/';
 const quotes = new Map();
 const completed = new Map();
@@ -57,16 +58,21 @@ export async function uploadMetadata(p, signer) {
   if (!prior || Date.now() > prior.until) throw new Error('Estimate again before uploading. Storage quotes expire after 5 minutes.');
   const current = await price(prepared);
   if (current.maximum > prior.maximum || current.funding > prior.funding) throw new Error('Storage price or balance changed. Estimate again before approving storage.');
-  if (current.funding > 0n) {
+  const pending = hasPendingFunding(signer.publicKey);
+  if (current.funding > 0n && !pending) {
     const text = `Fund permanent Irys L1 storage with up to ${current.funding} lamports (${Number(current.funding) / 1e9} SOL), plus Solana network fees? This is separate from token creation and cannot be refunded if you cancel the mint.`;
     if (!globalThis.window?.confirm(text)) throw new Error('Storage funding cancelled.');
     p.onStep?.('Approve separate Irys storage funding in Phantom');
-    await prepared.uploader.fund(lamports(current.funding), true);
+    // Funding is split below so chain finality must pass before Irys registration.
   }
-  { // wait for deposit credit before uploading (never fund twice)
-    const need = current.maximum; let ok = false;
-    for (let i = 0; i < 30 && !ok; i++) { ok = (await prepared.uploader.getBalance()).basisPoints >= need || current.funding === 0n; if (!ok) { p.onStep?.('Waiting for Irys to credit your deposit'); await new Promise(r => setTimeout(r, 4000)); } }
-    if (!ok) throw new Error('Deposit not credited by Irys yet. Wait a minute and try again; you will not be charged twice.');
+  if (current.funding > 0n || pending) {
+    const endpoints = customRpc() ? [rpcUrl()] : DEFAULT_RPCS;
+    await fundOnce({
+      irys: current.irys, amount: current.funding, maximum: current.maximum,
+      owner: signer.publicKey, assertOwner: signer.assertOwner,
+      connections: endpoints.map(url => new Connection(url, { commitment: 'finalized', fetch: rpcFetch })),
+      getBalance: async () => (await prepared.uploader.getBalance()).basisPoints, onStep: p.onStep,
+    });
   }
   // No SDK upload()/uploadJson(): those helpers auto-fund. Raw signed uploads
   // only spend the explicit deposit already approved above.

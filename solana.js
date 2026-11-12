@@ -108,6 +108,7 @@ export function storageSigner() {
   const assertOwner = () => { if (!p.isConnected || p.publicKey?.toBase58() !== expected) throw new Error('Wallet changed before storage approval.'); wallet(); };
   return {
     publicKey: publicKey(p.publicKey.toBase58()),
+    assertOwner,
     signMessage: async bytes => { assertOwner(); const r = await p.signMessage(bytes); return r.signature ?? r; },
     signTransaction: async tx => { assertOwner(); return fromWeb3JsTransaction(await p.signTransaction(toWeb3JsTransaction(tx))); },
     signAllTransactions: async txs => Promise.all(txs.map(async tx => { assertOwner(); return fromWeb3JsTransaction(await p.signTransaction(toWeb3JsTransaction(tx))); })),
