@@ -1,4 +1,4 @@
-import { acceptedId } from './irys-id.js';
+import { acceptedId } from './irys-id.mjs';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { signerIdentity, lamports } from '@metaplex-foundation/umi';
 import { irysUploader } from '@metaplex-foundation/umi-uploader-irys';

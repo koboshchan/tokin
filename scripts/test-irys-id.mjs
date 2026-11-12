@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { acceptedId } from '../irys-id.js';
+import { acceptedId } from '../irys-id.mjs';
 const id = 'a'.repeat(43);
 assert.equal(acceptedId({ status: 200, data: { id } }), id);
 assert.equal(acceptedId({ status: 200, data: { data: { id } } }), id);
